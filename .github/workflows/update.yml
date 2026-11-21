@@ -1,0 +1,60 @@
+name: Update data
+
+on:
+  schedule:
+    - cron: "23 14 * * *"   # daily 14:23 UTC; Sentinel-2 passes every ~5 days, scenes arrive late
+  workflow_dispatch:
+    inputs:
+      full_rebuild:
+        description: "Re-query everything since 2017 (first run, or after changing config.py)"
+        type: boolean
+        default: false
+      max_images:
+        description: "Max image pairs to render in this run (newest first)"
+        default: "300"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Fetch Sentinel-2 statistics and images
+        env:
+          EE_SERVICE_ACCOUNT_KEY: ${{ secrets.EE_SERVICE_ACCOUNT_KEY }}
+          EE_PROJECT: ${{ vars.EE_PROJECT }}
+        run: |
+          if [ -z "$EE_SERVICE_ACCOUNT_KEY" ]; then
+            echo "::error::Secret EE_SERVICE_ACCOUNT_KEY is missing. See docs/SETUP.md"; exit 1
+          fi
+          python -m pipeline.update \
+            ${{ inputs.full_rebuild && '--full' || '' }} \
+            --max-images ${{ inputs.max_images || '300' }}
+      - name: Commit new data
+        if: ${{ !cancelled() }}   # keep partial progress even if the step above failed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data images
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Data update $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 10; done
+
+  deploy:
+    needs: update
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/deploy.yml

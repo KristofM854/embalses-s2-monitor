@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor de embalses Sentinel-2</title>
+<link rel="stylesheet" href="style.css">
+<script src="vendor/plotly-basic.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1 data-i18n="title">Monitor de embalses Sentinel-2</h1>
+    <p class="sub"><span data-i18n="subtitle"></span> · <span data-i18n="updated"></span> <span id="updated">–</span></p>
+  </div>
+  <div class="top-actions">
+    <a class="btn" href="data/reservoir_ndci.csv" download data-i18n="dl_csv">CSV</a>
+    <a class="btn" href="data/reservoir_ndci.xlsx" download data-i18n="dl_xlsx">Excel</a>
+    <button class="btn" id="lang" type="button">English</button>
+  </div>
+</header>
+
+<main>
+  <section id="cards" class="cards" aria-live="polite"></section>
+
+  <section class="filters" aria-label="filters">
+    <label><span data-i18n="f_res"></span>
+      <select id="f-res"><option value="all" data-i18n="both"></option></select></label>
+    <label><span data-i18n="f_from"></span><input type="date" id="f-from"></label>
+    <label><span data-i18n="f_to"></span><input type="date" id="f-to"></label>
+    <div class="quick">
+      <button type="button" data-range="90" data-i18n="r_3m"></button>
+      <button type="button" data-range="365" data-i18n="r_1y"></button>
+      <button type="button" data-range="all" data-i18n="r_all"></button>
+    </div>
+    <label><span data-i18n="f_clear"></span> <b id="v-clear"></b>
+      <input type="range" id="f-clear" min="0" max="100" step="5" value="50"></label>
+    <label><span data-i18n="f_thr"></span> <b id="v-thr"></b>
+      <input type="range" id="f-thr" min="-0.1" max="0.4" step="0.01" value="0.1"></label>
+    <label class="check"><input type="checkbox" id="f-high"> <span data-i18n="f_high"></span></label>
+    <label class="check"><input type="checkbox" id="f-img"> <span data-i18n="f_img"></span></label>
+  </section>
+
+  <section id="viewer" class="viewer" hidden>
+    <div class="viewer-head">
+      <h2 id="v-title"></h2>
+      <div>
+        <button type="button" class="btn" id="v-prev" data-i18n="prev"></button>
+        <button type="button" class="btn" id="v-next" data-i18n="next"></button>
+        <button type="button" class="btn" id="v-close" data-i18n="close"></button>
+      </div>
+    </div>
+    <p id="v-stats" class="stats"></p>
+    <div class="pair">
+      <figure><img id="v-rgb" alt=""><figcaption data-i18n="cap_rgb"></figcaption></figure>
+      <figure><img id="v-ndci" alt=""><figcaption data-i18n="cap_ndci"></figcaption></figure>
+    </div>
+    <p id="v-noimg" class="note" hidden data-i18n="noimg"></p>
+    <div class="legend">
+      <div class="bar"></div>
+      <div class="ticks" id="ticks"></div>
+      <p class="note" data-i18n="legend_note"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="h_ndci"></h2>
+    <p class="note" data-i18n="ndci_help"></p>
+    <div id="charts"></div>
+    <h2 data-i18n="h_b4"></h2>
+    <p class="note" data-i18n="b4_help"></p>
+    <div id="charts-b4"></div>
+  </section>
+
+  <section>
+    <div class="table-head">
+      <h2><span data-i18n="h_table"></span> (<span id="n-rows">0</span>)</h2>
+      <button type="button" class="btn" id="dl-filtered" data-i18n="dl_filtered"></button>
+    </div>
+    <div class="table-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="about">
+    <h2 data-i18n="h_about"></h2>
+    <div data-i18n-html="about"></div>
+  </section>
+</main>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
