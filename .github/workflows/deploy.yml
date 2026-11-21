@@ -1,0 +1,41 @@
+name: Deploy dashboard
+
+on:
+  push:
+    branches: [main]
+    paths: ["dashboard/**", "data/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main   # when called after an update, include the commit it just pushed
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp -r dashboard/. _site/
+          cp -r data _site/data
+          cp -r images _site/images
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: pages
+        uses: actions/deploy-pages@v4
