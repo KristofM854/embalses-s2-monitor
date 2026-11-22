@@ -30,10 +30,15 @@ interface, so GitHub menu names are given in English only.
    [**Organisationsrichtlinie**] (`iam.disableServiceAccountKeyCreation`), the project
    belongs to an organisation that forbids keys. Use a personal project, or see
    "Optional: no stored key" below.
-5. Check that the **Earth Engine API** is enabled for the project:
-   **APIs & Services → Library** [**APIs und Dienste → Bibliothek**] → search
-   "Google Earth Engine API" → **Enable** [**Aktivieren**]. If the button says
-   **Manage** [**Verwalten**], it is already enabled.
+5. Check that the **Earth Engine API** is enabled for the project. Direct link:
+   https://console.cloud.google.com/apis/library/earthengine.googleapis.com?project=hab-quiz-ae5a8
+   (change `project=` for another project). Click **Enable** [**Aktivieren**]. If the
+   button says **Manage** [**Verwalten**], it is already enabled. If Earth Engine already
+   works with this project (e.g. from R or Python), this is always the case.
+
+   Via the menu: **☰** (top left) → **APIs & Services → Library** [**APIs und Dienste →
+   Bibliothek**] (if not listed: **View all products** [**Alle Produkte anzeigen**]), or type
+   "Earth Engine API" into the search bar at the top of the console.
 
 ## 2. GitHub secret
 
