@@ -32,7 +32,7 @@ const I18N = {
 <li><b>% NIR alto</b>: píxeles con B8 &gt; 0.05: espuma o nata de algas, plantas acuáticas, reflejo solar o neblina. Revise la imagen.</li>
 <li><b>B4</b> alto junto con NDCI alto tras lluvias suele ser sedimento.</li>
 <li>Los datos se actualizan automáticamente cada día con GitHub Actions. Sentinel-2 pasa cada ~5 días; las imágenes llegan con 1–3 días de retraso.</li>
-<li>Fuentes: Copernicus Sentinel-2 L2A (COPERNICUS/S2_SR_HARMONIZED), Google Cloud Score+, JRC Global Surface Water, vía Google Earth Engine.</li>
+<li>Fuentes: Copernicus Sentinel-2 L2A (COPERNICUS/S2_SR_HARMONIZED), Google Cloud Score+, vía Google Earth Engine. Contorno de los embalses derivado de Sentinel-2 (MNDWI).</li>
 </ul>`,
   },
   en: {
@@ -67,7 +67,7 @@ const I18N = {
 <li><b>% high NIR</b>: pixels with B8 &gt; 0.05: surface scum, floating plants, sun glint or haze. Check the image.</li>
 <li>High <b>B4</b> together with high NDCI after rain is usually sediment.</li>
 <li>Data update automatically every day via GitHub Actions. Sentinel-2 passes every ~5 days; scenes arrive 1–3 days late.</li>
-<li>Sources: Copernicus Sentinel-2 L2A (COPERNICUS/S2_SR_HARMONIZED), Google Cloud Score+, JRC Global Surface Water, via Google Earth Engine.</li>
+<li>Sources: Copernicus Sentinel-2 L2A (COPERNICUS/S2_SR_HARMONIZED), Google Cloud Score+, via Google Earth Engine. Reservoir outlines derived from Sentinel-2 (MNDWI).</li>
 </ul>`,
   },
 };

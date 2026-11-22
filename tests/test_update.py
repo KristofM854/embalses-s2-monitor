@@ -17,7 +17,8 @@ def fake_stats(name, geom, n_total, start, end):
 def test_full_then_incremental(tmp_path, monkeypatch):
     calls, rendered = [], []
     monkeypatch.setattr(gee, "init", lambda project=None: None)
-    monkeypatch.setattr(gee, "load_or_build_outline", lambda name, d: ({"type": "Point"}, 100))
+    monkeypatch.setattr(gee, "load_or_build_outline", lambda name, d: ({"type": "Point"}, 100, False))
+    monkeypatch.setattr(gee, "mark_backfilled", lambda name, d: None)
     monkeypatch.setattr(gee, "scene_stats",
                         lambda *a: calls.append(a[3:]) or fake_stats(*a))
 
