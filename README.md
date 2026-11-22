@@ -65,9 +65,14 @@ GitHub envía un correo al dueño del repositorio cuando falla una actualizació
    repositorio. Si el dashboard deja de actualizarse: Actions → "Update data" →
    **Enable workflow**.
 
+### Corregir el contorno de un embalse
+El contorno en uso está en `data/aoi_Valdesia.geojson` y `data/aoi_Hatillo.geojson`
+(GitHub lo muestra en un mapa). Si no es correcto, dibuje uno a mano: ver
+[data/aoi_overrides/README.md](data/aoi_overrides/README.md).
+
 ### Ejecutar a mano
 Actions → "Update data" → **Run workflow**. "full_rebuild" vuelve a calcular todo desde
-2017 (solo necesario si se cambia `pipeline/config.py`).
+2017 (normalmente no hace falta: un cambio de contorno ya lo hace automáticamente).
 
 ---
 
@@ -99,9 +104,15 @@ docs/SETUP.md    one-time setup: service account, secret, Pages, first backfill
 - **Data:** `COPERNICUS/S2_SR_HARMONIZED` (L2A, Sen2Cor; the processing-baseline 04.00
   offset is already removed in this collection).
 - **Clouds:** `GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED`, pixels kept at `cs_cdf ≥ 0.6`.
-- **Outline:** largest JRC Global Surface Water body (occurrence ≥ 80 %) near each dam,
-  buffered 60 m inward to avoid mixed shore pixels. Cached in `data/aoi_*.geojson`, so
-  `n_total` is fixed; open these files in QGIS to check them.
+- **Outline:** built from Sentinel-2 itself. For 2019–2025, each pixel's share of clear
+  looks with MNDWI = (B3 − B11)/(B3 + B11) > 0 is computed. Pixels that are water in
+  ≥ 75 % of clear looks form the reservoir, traced at 10 m and buffered 20 m inward
+  (one 20 m pixel) against mixed shore pixels. MNDWI stays positive over algae, so blooms
+  are not cut out of the mask. The outline is cached in `data/aoi_*.geojson` (GitHub shows
+  it on a map), so `n_total` stays fixed. A hand-drawn outline in `data/aoi_overrides/`
+  replaces it (see the README there). When the outline settings or an override change,
+  the next run rebuilds the outline and recomputes that reservoir's series and images
+  automatically.
 - **Statistics:** at 20 m in UTM 19N: NDCI = (B5 − B4)/(B5 + B4) percentiles, mean and
   threshold fractions; B4 and B8 medians; NIR flag. If both granules of a day cover the
   reservoir, the one with more clear pixels is kept.
@@ -123,6 +134,8 @@ cd dashboard && ln -s ../data data && ln -s ../images images && python -m http.s
 ### Known limitations / possible next steps
 - NDCI from Sen2Cor over small, turbid reservoirs is relative only. A water-specific
   atmospheric correction (ACOLITE) and in-situ chl-a would turn it into a calibrated product.
-- Valdesia is narrow; at 20 m some arms have few pure-water pixels after the shore buffer.
+- The outline is fixed. When the water level drops, exposed shore inside it is cloud-free
+  "water" with low NDCI and high B4/B8. A per-scene water test (MNDWI) would handle that,
+  but it needs checking on real scenes so it doesn't mask dense surface scum.
 - The service-account key is long-lived. Workload Identity Federation would avoid storing
   a key (see docs/SETUP.md).

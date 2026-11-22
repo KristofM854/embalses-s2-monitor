@@ -1,25 +1,37 @@
 """All tunable settings in one place.
 
-Changing RESERVOIRS, OCC_MIN or SHORE_BUFFER_M changes the outline. Delete
-data/aoi_<name>.geojson afterwards so it is rebuilt, and rebuild the whole
-series (workflow input "full_rebuild"), otherwise frac_valid is inconsistent.
+Changing a reservoir seed or OUTLINE, or adding a hand-drawn outline in
+data/aoi_overrides/, is detected on the next run: the outline is rebuilt and
+that reservoir's whole series and images are recomputed automatically.
 """
 
 DEFAULT_PROJECT = "hab-quiz-ae5a8"   # overridden by EE_PROJECT or the service account key
 
-# Seeds near each dam. The outline is the largest JRC water body
-# (occurrence >= OCC_MIN) within radius_m of the seed.
+# Seeds near each dam. The outline is the largest Sentinel-2 water body
+# within radius_m of the seed (see OUTLINE). The radius only limits the search;
+# a run warns if the reservoir reaches the edge of the search circle.
 # Valdesia: hydro plant location (Global Energy Monitor). Hatillo: dam (Wikipedia).
 RESERVOIRS = {
-    "Valdesia": {"lon": -70.2762, "lat": 18.3917, "radius_m": 7000},
+    "Valdesia": {"lon": -70.2762, "lat": 18.3917, "radius_m": 12000},
     "Hatillo": {"lon": -70.2004, "lat": 19.0336, "radius_m": 20000},
 }
 
 FIRST_DATE = "2017-01-01"  # S2 L2A in Earth Engine is sparse before late 2018; empty chunks are fine
 LOOKBACK_DAYS = 45         # each run re-queries this window to catch late / reprocessed scenes
 
-OCC_MIN = 80          # % of time the pixel was water in the JRC record
-SHORE_BUFFER_M = 60   # inward buffer to drop mixed land/water pixels
+# Outline from Sentinel-2 itself: share of clear observations in which a pixel
+# is water (MNDWI = (B3 - B11)/(B3 + B11) > mndwi_min). MNDWI stays positive
+# over algae much better than NIR-based indices, so blooms are not cut out.
+# A fixed period keeps the outline reproducible.
+OUTLINE = {
+    "start": "2019-01-01", "end": "2026-01-01",
+    "mndwi_min": 0.0,
+    "water_freq_min": 0.75,   # water in >= 75 % of clear looks; lower = include more drawdown zone
+    "min_obs": 20,            # clear looks needed for a pixel to count
+    "scale": 10,              # m, vectorisation grid (B11 is resampled bilinearly from 20 m)
+    "shore_buffer_m": 20,     # inward buffer against mixed shore pixels (one 20 m pixel)
+    "simplify_m": 10,
+}
 CS_THRESHOLD = 0.6    # Cloud Score+ cs_cdf, higher = clearer
 SCALE = 20            # m, native resolution of B5
 CRS = "EPSG:32619"    # UTM 19N, covers both reservoirs

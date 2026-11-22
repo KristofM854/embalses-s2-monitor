@@ -6,6 +6,7 @@
 """
 import argparse
 import os
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -36,10 +37,16 @@ def main(argv=None):
     outlines = {}
 
     for name in C.RESERVOIRS:
-        geom, n_total = gee.load_or_build_outline(name, a.data_dir)
+        geom, n_total, backfill = gee.load_or_build_outline(name, a.data_dir)
         outlines[name] = geom
         start = (C.FIRST_DATE if a.full else
                  a.start or store.incremental_start(df, name, C.LOOKBACK_DAYS, C.FIRST_DATE))
+        if backfill:
+            # New outline: old rows and images were computed on the old one
+            print(f"{name}: new outline, computing the whole series", flush=True)
+            start = C.FIRST_DATE
+            df = df[df["reservoir"] != name]
+            shutil.rmtree(os.path.join(a.images_dir, name), ignore_errors=True)
         print(f"{name}: {n_total} water pixels; querying {start} to {a.end}", flush=True)
         for s, e in store.date_chunks(start, a.end, C.CHUNK_MONTHS):
             new = gee.scene_stats(name, geom, n_total, s, e)
@@ -47,6 +54,8 @@ def main(argv=None):
             print(f"  {s} to {e}: {len(new)} scenes", flush=True)
         # Write after every reservoir so a later failure keeps finished work
         store.write_outputs(df, a.data_dir, a.images_dir)
+        if backfill:
+            gee.mark_backfilled(name, a.data_dir)
 
     # Images: newest first, so the dashboard is current even during a backfill
     todo = [(r, d) for r, d, f in

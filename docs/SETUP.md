@@ -39,6 +39,11 @@ Repo → **Actions → Update data → Run workflow**
 
 When it is green, the dashboard is at `https://kristofm854.github.io/embalses-s2-monitor/`.
 
+Then open `data/aoi_Valdesia.geojson` and `data/aoi_Hatillo.geojson` on GitHub (shown on
+a map) and check that the outlines fit. If a run log shows a warning that the outline
+reaches the edge of the search circle, increase `radius_m` in `pipeline/config.py`. To
+correct an outline by hand, see `data/aoi_overrides/README.md`.
+
 ## Handing over / Traspaso
 
 - **Move the repo to a team account or organisation:** Settings → General → Transfer.
