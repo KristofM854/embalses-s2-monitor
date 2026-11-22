@@ -3,17 +3,37 @@
 About 15 minutes. Needs: owner access to the GitHub repo, and to the Google Cloud project
 registered for Earth Engine (currently `hab-quiz-ae5a8`).
 
+German labels of the Google Cloud console are given in [brackets]. GitHub has no German
+interface, so GitHub menu names are given in English only.
+
 ## 1. Service account for Earth Engine
 
-1. Open https://console.cloud.google.com/iam-admin/serviceaccounts and select the project.
-2. **Create service account**, name e.g. `s2-monitor`.
-3. Grant these roles to it:
+1. Open https://console.cloud.google.com/iam-admin/serviceaccounts
+   (**IAM & Admin → Service Accounts** [**IAM und Verwaltung → Dienstkonten**]) and select
+   the project at the top (**Select a project** [**Projekt auswählen**]).
+2. **Create service account** [**Dienstkonto erstellen**], name e.g. `s2-monitor`, then
+   **Create and continue** [**Erstellen und fortfahren**].
+3. Under **Grant this service account access to project** [**Diesem Dienstkonto Zugriff
+   auf das Projekt gewähren**] → **Select a role** [**Rolle auswählen**], add these two roles:
    - **Earth Engine Resource Viewer** (`roles/earthengine.viewer`)
    - **Service Usage Consumer** (`roles/serviceusage.serviceUsageConsumer`)
-4. Open the account → **Keys** → **Add key** → **Create new key** → JSON. A file downloads.
-   Treat it like a password and never commit it.
-5. Check that the **Earth Engine API** is enabled for the project
-   (APIs & Services → Library → "Google Earth Engine API").
+
+   Role names are translated in the German console. Type the role ID into the filter
+   (`earthengine.viewer`, `serviceUsageConsumer`) to find them in any language.
+   Then **Continue** [**Weiter**] → **Done** [**Fertig**].
+4. Open the account → **Keys** [**Schlüssel**] → **Add key** [**Schlüssel hinzufügen**] →
+   **Create new key** [**Neuen Schlüssel erstellen**] → key type **JSON** [**Schlüsseltyp:
+   JSON**] → **Create** [**Erstellen**]. A file downloads. Treat it like a password and
+   never commit it.
+
+   If key creation is blocked with a message about an organisation policy
+   [**Organisationsrichtlinie**] (`iam.disableServiceAccountKeyCreation`), the project
+   belongs to an organisation that forbids keys. Use a personal project, or see
+   "Optional: no stored key" below.
+5. Check that the **Earth Engine API** is enabled for the project:
+   **APIs & Services → Library** [**APIs und Dienste → Bibliothek**] → search
+   "Google Earth Engine API" → **Enable** [**Aktivieren**]. If the button says
+   **Manage** [**Verwalten**], it is already enabled.
 
 ## 2. GitHub secret
 
@@ -49,14 +69,17 @@ correct an outline by hand, see `data/aoi_overrides/README.md`.
 - **Move the repo to a team account or organisation:** Settings → General → Transfer.
   Secrets go with the repo. The Pages URL changes to the new owner's name.
 - **Switch to a team-owned Google Cloud project:** register the new project for
-  non-commercial Earth Engine use (https://code.earthengine.google.com/register), repeat
-  step 1 there, and replace the secret in step 2. Then disable the old key.
+  non-commercial Earth Engine use [nicht kommerzielle Nutzung]
+  (https://code.earthengine.google.com/register), repeat
+  step 1 there, and replace the secret in step 2. Then disable the old key (service
+  account → **Keys** [**Schlüssel**] → delete icon [**Löschen**]).
 - **Add maintainers:** Settings → Collaborators. Ask them to **Watch** the repo so they
   get failure e-mails.
 
 ## Optional: no stored key
 
 Instead of a JSON key, GitHub can authenticate to Google with Workload Identity Federation
+[Workload Identity-Föderation, under **IAM & Admin** [**IAM und Verwaltung**]]
 (`google-github-actions/auth`). This is more secure but takes more setup. The pipeline
 falls back to application-default credentials when no key secret is set, so it should work
 without code changes, but this path is untested.
