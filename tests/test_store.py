@@ -54,3 +54,21 @@ def test_write_outputs(tmp_path):
     assert meta["reservoirs"]["Hatillo"]["n_images"] == 1
     back = store.load(tmp_path / "data" / "reservoir_ndci.csv")
     assert len(back) == 2 and (tmp_path / "data" / "reservoir_ndci.xlsx").exists()
+
+
+def test_metadata_in_csv_and_excel(tmp_path):
+    from openpyxl import load_workbook
+    from pipeline import metadata as M
+    df = store.tidy(rows("Hatillo", ["2024-01-01"]))
+    store.write_outputs(df, tmp_path, tmp_path / "img")
+    text = (tmp_path / "reservoir_ndci.csv").read_text(encoding="utf-8")
+    header = [l for l in text.splitlines() if l.startswith("#")]
+    assert all(l.startswith("# ") for l in header) and any("frac_high_nir |" in l for l in header)
+    assert text.splitlines()[len(header)].startswith("reservoir,date,")
+    assert len(store.load(tmp_path / "reservoir_ndci.csv")) == 1   # header skipped on read
+    wb = load_workbook(tmp_path / "reservoir_ndci.xlsx")
+    assert wb.sheetnames[:2] == ["Léame · Read me", "Metadatos · Metadata"]
+    meta_cols = [r[0].value for r in wb["Metadatos · Metadata"].iter_rows(min_row=2)]
+    assert meta_cols == [c[0] for c in M.COLUMNS] == store.COLUMNS
+    cols = json.loads((tmp_path / "columns.json").read_text())
+    assert [c["name"] for c in cols] == store.COLUMNS
