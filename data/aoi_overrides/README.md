@@ -10,7 +10,7 @@
    o `Hatillo.geojson`.
 4. En GitHub, abra esta carpeta → *Add file → Upload files* → suba el archivo → *Commit*.
 
-En la siguiente actualización diaria (o al ejecutar "Update data" a mano) se usa el nuevo
+En la siguiente actualización (cada dos horas, o al ejecutar "Update data" a mano) se usa el nuevo
 contorno y **toda la serie y las imágenes de ese embalse se recalculan automáticamente**.
 Para volver al contorno automático, borre el archivo.
 

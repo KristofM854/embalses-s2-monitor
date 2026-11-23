@@ -107,7 +107,8 @@ function colors() {
   const s = getComputedStyle(document.documentElement);
   const g = (n) => s.getPropertyValue(n).trim();
   return { surface: g("--surface"), text: g("--text"), text2: g("--text-2"), border: g("--border"),
-    median: g("--s-median"), p90: g("--s-p90"), b4: g("--s-b4"), l3: g("--st-warning"), l4: g("--st-critical") };
+    median: g("--s-median"), p90: g("--s-p90"), b4: g("--s-b4"), l3: g("--st-warning"), l4: g("--st-critical"),
+    temp: g("--s-temp"), tempBand: g("--s-temp-band") };
 }
 
 // Rendering --------------------------------------------------------------------
@@ -121,10 +122,15 @@ function filterRows() {
 function render() {
   FILTERED = filterRows();
   $("v-clear").textContent = state.clear + " %";
-  renderCards(); renderSeason(); renderCharts(); renderTable();
+  renderCards(); renderSeason(); renderCharts(); renderTable(); renderSampling();
   writeUrl();
 }
 
+function tempLine(name) {
+  const r = lastTemp(name);
+  if (!r) return "";
+  return `<div class="lbl">🌡 ${t("temp_last")}: <b>${r.temp_p50.toFixed(1)} °C</b> (Landsat, ${fmtDate(r.date)})</div>`;
+}
 function daysAgo(d) {
   const n = Math.round((Date.now() - new Date(d + "T15:15:00Z")) / 864e5);
   return n <= 0 ? t("today") : n === 1 ? t("yesterday") : t("days_ago", { n });
@@ -144,6 +150,7 @@ function renderCards() {
         <div class="lbl">${t("last_image")}: <b>${fmtDate(r.date)}</b> (${daysAgo(r.date)}) · ${pct(r.frac_valid)} ${t("visible")}</div>
         <div class="big">${levelBadge(r.level)}</div>
         <p class="sentence">${t("card_sentence", { p: r.rank })}</p>
+        ${tempLine(name)}
         ${r.notes.length ? `<ul class="notes">${r.notes.map((n) => `<li>⚠ ${noteText(r, n)}</li>`).join("")}</ul>` : ""}
         <button type="button" class="btn">${t("see_images")}</button>
       </div>${thumb}`;
@@ -245,6 +252,7 @@ function renderCharts() {
 function openViewer(res, date, scroll = true) {
   const r = ROWS.find((x) => x.reservoir === res && x.date === date);
   if (!r) return;
+  if (state.view?.res !== res) VIEWZOOM?.reset(); // keep the zoom when stepping through dates
   state.view = { res, date };
   $("viewer").hidden = false;
   $("v-title").textContent = `${res} · ${fmtDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
@@ -255,12 +263,14 @@ function openViewer(res, date, scroll = true) {
     `NDCI p50 ${fmt(r.ndci_p50, 3)} · p90 ${fmt(r.ndci_p90, 3)} · NDCI>0.1 ${pct(r["frac_ndci_gt_0.1"])} · ` +
     `B4 ${fmt(r.b4_p50, 3)} · B8>0.05 ${pct(r.frac_high_nir)} · ${pct(r.frac_valid)} ${t("visible")} · ${r.scene ?? ""}`;
   const base = `images/${encodeURIComponent(res)}/${date}`;
-  $("v-rgb").parentElement.hidden = $("v-ndci").parentElement.hidden = !r.img;
+  $("v-rgb").closest("figure").hidden = $("v-ndci").closest("figure").hidden = !r.img;
+  $("v-tools").hidden = !r.img;
   $("v-noimg").hidden = r.img;
   if (r.img) {
     $("v-rgb").src = base + "_rgb.webp"; $("v-rgb").alt = `${res} ${date} ${t("cap_rgb")}`;
     $("v-ndci").src = base + "_ndci.webp"; $("v-ndci").alt = `${res} ${date} NDCI`;
   }
+  refreshMarkers();
   writeUrl();
   if (scroll) $("viewer").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -356,22 +366,26 @@ function wire() {
     const tr = e.target.closest("tr"); if (tr) openViewer(tr.dataset.r, tr.dataset.d);
   });
   on("dl-filtered", "click", downloadFiltered);
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderSeason(); renderCharts(); });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderSeason(); renderCharts(); renderTemp(); });
 }
 
 async function main() {
   readUrl();
   applyLang();
   const get = (u) => fetch(u, { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
-  const [cols, meta, colmeta] = await Promise.all([get("data/ndci.json"), get("data/meta.json"),
-    get("data/columns.json").catch(() => null)]);
-  META = meta; COLMETA = colmeta;
+  const opt = (u) => get(u).catch(() => null); // optional files
+  const [cols, meta, colmeta, grids, maps, passes, temp] = await Promise.all([
+    get("data/ndci.json"), get("data/meta.json"), opt("data/columns.json"), opt("data/image_grid.json"),
+    opt("data/maps.json"), opt("data/passes.json"), opt("data/temperature.json")]);
+  META = meta; COLMETA = colmeta; GRIDS = grids || {}; MAPS = maps; PASSES = passes;
+  if (temp) TEMP = temp.date.map((_, i) => Object.fromEntries(Object.keys(temp).map((k) => [k, temp[k][i]])));
   const keys = Object.keys(cols);
   ROWS = cols.date.map((_, i) => Object.fromEntries(keys.map((k) => [k, cols[k][i]])));
   RESERVOIRS = [...new Set(ROWS.map((r) => r.reservoir))];
   for (const n of RESERVOIRS) $("f-res").insertAdjacentHTML("beforeend", `<option value="${n}">${n}</option>`);
   if (state.res !== "all" && !RESERVOIRS.includes(state.res)) state.res = "all";
   computeStats();
+  initSampling();
   applyLang(); syncInputs(); wire(); render();
   if (state.view) openViewer(state.view.res, state.view.date);
 }

@@ -61,7 +61,7 @@ Repo → **Settings → Pages → Build and deployment → Source: GitHub Action
 Repo → **Actions → Update data → Run workflow**
 - `full_rebuild`: ticked
 - `max_images`: `2000` (renders all images in one run, ~1–2 h), or leave 300 and let
-  the daily runs finish the backfill over a few days.
+  the regular runs (every two hours) finish the backfill.
 
 When it is green, the dashboard is at `https://kristofm854.github.io/embalses-s2-monitor/`.
 
