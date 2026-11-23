@@ -11,6 +11,7 @@ indicator, not calibrated chl-a.
 import hashlib
 import io
 import json
+import math
 import os
 import time
 
@@ -110,15 +111,46 @@ def build_outline(lon, lat, radius_m):
     coarse = _largest_water_body(region, 30)
     box = coarse.bounds(1).buffer(300, 1).intersection(region, 1)
     fine = _largest_water_body(box, o["scale"])
-    inside = region.buffer(-100).contains(coarse, 1)
+    inside = region.buffer(-100).contains(fine, 1)
     aoi = (fine.buffer(-o["shore_buffer_m"], 2).simplify(o["simplify_m"])
            .transform("EPSG:4326", 1))
     res = ee.Dictionary({"aoi": aoi, "inside": inside}).getInfo()
-    return res["aoi"], not res["inside"]
+    return polygons_only(res["aoi"]), not res["inside"]
+
+
+def _ring_area_m2(ring):
+    """Approximate area of a lon/lat ring in m² (fine for small areas)."""
+    lat0 = math.radians(sum(p[1] for p in ring) / len(ring))
+    kx, ky = 111320 * math.cos(lat0), 110540
+    a = sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(ring, ring[1:]))
+    return abs(a) / 2 * kx * ky
+
+
+def polygons_only(geom, min_area_m2=10000):
+    """Drop points, lines and slivers that a negative buffer can leave behind."""
+    if geom["type"] == "Polygon":
+        polys = [geom["coordinates"]]
+    elif geom["type"] == "MultiPolygon":
+        polys = geom["coordinates"]
+    elif geom["type"] == "GeometryCollection":
+        polys = []
+        for g in geom["geometries"]:
+            if g["type"] == "Polygon":
+                polys.append(g["coordinates"])
+            elif g["type"] == "MultiPolygon":
+                polys.extend(g["coordinates"])
+    else:
+        polys = []
+    polys = [p for p in polys if _ring_area_m2(p[0]) >= min_area_m2]
+    if not polys:
+        raise ValueError("outline has no polygon larger than the minimum area")
+    return ({"type": "Polygon", "coordinates": polys[0]} if len(polys) == 1
+            else {"type": "MultiPolygon", "coordinates": polys})
 
 
 def count_pixels(geom):
-    return ee.Image(1).reduceRegion(reducer=ee.Reducer.count(), geometry=ee.Geometry(geom),
+    return ee.Image(1).reduceRegion(reducer=ee.Reducer.count().unweighted(),
+                                    geometry=ee.Geometry(geom),
                                     scale=C.SCALE, crs=C.CRS, maxPixels=1e9
                                     ).get("constant").getInfo()
 
@@ -134,24 +166,16 @@ def read_override(path):
         geoms = [gj["geometry"]]
     else:
         geoms = [gj]
-    polys = []
-    for g in geoms:
-        if g["type"] == "Polygon":
-            polys.append(g["coordinates"])
-        elif g["type"] == "MultiPolygon":
-            polys.extend(g["coordinates"])
-    if not polys:
-        raise ValueError(f"{path}: no Polygon or MultiPolygon found")
-    geom = ({"type": "Polygon", "coordinates": polys[0]} if len(polys) == 1
-            else {"type": "MultiPolygon", "coordinates": polys})
+    geom = polygons_only({"type": "GeometryCollection", "geometries": geoms}, 0)
     return geom, hashlib.sha1(raw).hexdigest()
 
 
 def outline_params(name, override_sha=None):
     """What the cached outline was built from. A difference triggers a rebuild."""
     if override_sha:
-        return {"method": "override", "sha1": override_sha}
-    return {"method": "s2_mndwi", "seed": C.RESERVOIRS[name], **C.OUTLINE}
+        return {"method": "override", "sha1": override_sha, "version": C.OUTLINE_VERSION}
+    return {"method": "s2_mndwi", "seed": C.RESERVOIRS[name], **C.OUTLINE,
+            "version": C.OUTLINE_VERSION}
 
 
 def load_or_build_outline(name, data_dir):
@@ -210,9 +234,10 @@ def mark_backfilled(name, data_dir):
 
 def _scene_stats(aoi, start, end):
     s2 = ee.ImageCollection(S2).filterBounds(aoi).filterDate(start, end)
+    # unweighted: a pixel counts if its centre is inside the outline, as in count_pixels()
     reducer = (ee.Reducer.percentile([50, 90])
                .combine(ee.Reducer.mean(), sharedInputs=True)
-               .combine(ee.Reducer.count(), sharedInputs=True))
+               .combine(ee.Reducer.count(), sharedInputs=True)).unweighted()
     lo, hi = C.NDCI_FLAGS
 
     def to_feature(img):
