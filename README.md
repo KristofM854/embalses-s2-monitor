@@ -8,6 +8,8 @@ from Sentinel-2 and water temperature from Landsat, updated every two hours.*
 - **Datos / Data:** [`data/reservoir_ndci.xlsx`](data/reservoir_ndci.xlsx) ·
   [`data/reservoir_ndci.csv`](data/reservoir_ndci.csv)
 
+![Recorrido por el panel / Dashboard tour: situación actual, próximos pasos del satélite, floración en Hatillo (14 ene 2026) con zoom, coordenadas y punto marcado, mapa de frecuencia, historial y temperatura](docs/dashboard.gif)
+
 [Español](#español) · [English](#english)
 
 ---
