@@ -23,6 +23,11 @@ LOOKBACK_DAYS = 45         # each run re-queries this window to catch late / rep
 # is water (MNDWI = (B3 - B11)/(B3 + B11) > mndwi_min). MNDWI stays positive
 # over algae much better than NIR-based indices, so blooms are not cut out.
 # A fixed period keeps the outline reproducible.
+# Bump to force every outline (and with it every series) to be recomputed after a
+# change in how outlines or pixel counts are computed.
+# 2: polygons only, edge check on final outline, unweighted pixel counts.
+OUTLINE_VERSION = 2
+
 OUTLINE = {
     "start": "2019-01-01", "end": "2026-01-01",
     "mndwi_min": 0.0,

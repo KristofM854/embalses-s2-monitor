@@ -99,6 +99,9 @@ def main(argv=None):
     failed += fatal
 
     meta = store.write_outputs(df, a.data_dir, a.images_dir)
+    if (df["frac_valid"] > 1.001).any():
+        print("::warning::Some rows have frac_valid > 1: pixel counts of statistics and outline "
+              "disagree.", flush=True)
     done = len(todo) - len(failed) - len(skipped)
     lines = [f"Rows: {n_before} -> {len(df)}",
              f"Images rendered: {done}, failed: {len(failed)}, left for later runs: {remaining}"]
