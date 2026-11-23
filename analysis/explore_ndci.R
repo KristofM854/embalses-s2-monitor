@@ -33,7 +33,8 @@ peaks <- do.call(rbind, lapply(split(good, good$reservoir), pick_peaks))
 rownames(peaks) <- NULL
 print(peaks[, c("reservoir", "date", "ndci_p50", "ndci_p90", "b4_p50",
                 "frac_high_nir", "frac_valid")])
-# Images for any date are in the dashboard, or images/<reservoir>/<date>_{rgb,ndci}.webp
+# Images for any date are in the dashboard, or on the repository's "images" branch:
+# <reservoir>/<date>_{rgb,ndci}.webp
 
 # Monthly climatology: is the current value unusual for the season?
 good$month <- as.integer(format(good$date, "%m"))
