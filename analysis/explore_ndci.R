@@ -6,7 +6,7 @@ library(ggplot2)
 # Either the online copy (always current) or a local clone of the repo
 src <- Sys.getenv("NDCI_CSV", "data/reservoir_ndci.csv")
 # src <- "https://kristofm854.github.io/embalses-s2-monitor/data/reservoir_ndci.csv"
-ts <- read.csv(src)
+ts <- read.csv(src, comment.char = "#")  # lines starting with # describe the columns
 ts$date <- as.Date(ts$date)
 
 # Keep dates where at least half the reservoir was cloud-free

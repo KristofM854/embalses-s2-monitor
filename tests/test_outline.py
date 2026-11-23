@@ -75,7 +75,7 @@ def test_update_recomputes_series_after_outline_change(tmp_path, mocked, monkeyp
     queried.clear()
     update.main(args)
     assert ("Valdesia", "2024-01-01") in queried and ("Hatillo", "2024-01-01") not in queried
-    df = pd.read_csv(tmp_path / "reservoir_ndci.csv")
+    df = pd.read_csv(tmp_path / "reservoir_ndci.csv", comment="#")
     assert set(df[df.reservoir == "Valdesia"].n_total) == {1000}  # SQUARE -> 1000 in mock
 
 
