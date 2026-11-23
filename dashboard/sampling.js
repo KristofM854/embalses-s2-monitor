@@ -3,6 +3,10 @@
 "use strict";
 
 let GRIDS = {}, MAPS = null, PASSES = null, TEMP = [], POINTS = [];
+// Water below this is not physically possible in these lowland tropical reservoirs at
+// 11:00; such values come from thin cloud or haze that the Landsat mask missed.
+const TEMP_MIN_PLAUSIBLE = 20;
+const tempOk = (r) => r.frac_valid >= RELIABLE && r.temp_p50 != null && r.temp_p50 >= TEMP_MIN_PLAUSIBLE;
 const mapState = { res: null, kind: "freq" };
 let VIEWZOOM = null, MAPZOOM = null;
 
@@ -272,7 +276,7 @@ function renderPasses() {
 
 // Water temperature --------------------------------------------------------------
 function lastTemp(name) {
-  const rows = TEMP.filter((r) => r.reservoir === name && r.frac_valid >= RELIABLE && r.temp_p50 != null);
+  const rows = TEMP.filter((r) => r.reservoir === name && tempOk(r));
   return rows[rows.length - 1];
 }
 function renderTemp() {
@@ -281,7 +285,7 @@ function renderTemp() {
   if (!TEMP.length) return;
   const names = state.res === "all" ? RESERVOIRS : [state.res];
   for (const name of names) {
-    const d = TEMP.filter((r) => r.reservoir === name && r.frac_valid >= RELIABLE &&
+    const d = TEMP.filter((r) => r.reservoir === name && tempOk(r) &&
       (!state.from || r.date >= state.from) && (!state.to || r.date <= state.to));
     const x = d.map((r) => r.date);
     const lay = baseLayout(c, name, t("temp_axis"));
