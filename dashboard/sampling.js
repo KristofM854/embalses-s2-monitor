@@ -8,6 +8,10 @@ let GRIDS = {}, MAPS = null, PASSES = null, TEMP = [], POINTS = [];
 const TEMP_MIN_PLAUSIBLE = 20;
 const tempOk = (r) => r.frac_valid >= RELIABLE && r.temp_p50 != null && r.temp_p50 >= TEMP_MIN_PLAUSIBLE;
 const mapState = { res: null, kind: "freq" };
+// Default map per reservoir. Valdesia rarely passes NDCI 0.1, so its frequency map is
+// almost uniformly pale; the typical-value map (scaled to the reservoir) shows more.
+const MAP_DEFAULT = { Valdesia: "mean" };
+const mapDefault = (res) => MAP_DEFAULT[res] || "freq";
 let VIEWZOOM = null, MAPZOOM = null;
 
 // Coordinates ------------------------------------------------------------------
@@ -226,7 +230,7 @@ class ZoomGroup {
 function renderMaps() {
   const sel = $("m-res");
   if (!sel.options.length) for (const n of RESERVOIRS) sel.insertAdjacentHTML("beforeend", `<option value="${n}">${n}</option>`);
-  if (!mapState.res) mapState.res = RESERVOIRS[0];
+  if (!mapState.res) { mapState.res = RESERVOIRS[0]; mapState.kind = mapDefault(mapState.res); }
   sel.value = mapState.res;
   document.querySelectorAll("[data-map]").forEach((b) => b.classList.toggle("active", b.dataset.map === mapState.kind));
   const m = MAPS && MAPS[mapState.res];
@@ -315,7 +319,9 @@ function initSampling() {
     () => state.view && { res: state.view.res, from: t("p_from_image", { d: state.view.date }) });
   MAPZOOM = new ZoomGroup([document.querySelector("#maps .zoombox")], $("m-tools"),
     () => ({ res: mapState.res, from: t(mapState.kind === "freq" ? "map_freq" : "map_mean") }));
-  $("m-res").addEventListener("change", (e) => { mapState.res = e.target.value; MAPZOOM.reset(); renderMaps(); });
+  $("m-res").addEventListener("change", (e) => {
+    mapState.res = e.target.value; mapState.kind = mapDefault(mapState.res); MAPZOOM.reset(); renderMaps();
+  });
   document.querySelectorAll("[data-map]").forEach((b) => b.addEventListener("click", () => {
     mapState.kind = b.dataset.map; renderMaps();
   }));
