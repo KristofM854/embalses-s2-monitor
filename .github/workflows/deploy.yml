@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths: ["dashboard/**", "data/**", ".github/workflows/deploy.yml"]
+    # the images branch is published by the update workflow, which calls this one
   workflow_dispatch:
   workflow_call:
 
@@ -26,13 +27,19 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: main   # when called after an update, include the commit it just pushed
+      - name: Get images (branch "images")
+        run: |
+          mkdir -p _site/images
+          if git ls-remote --exit-code --heads origin images > /dev/null; then
+            git fetch --depth 1 origin images
+            git archive FETCH_HEAD | tar -x -C _site/images
+          fi
       - name: Assemble site
         run: |
-          mkdir _site
           cp -r dashboard/. _site/
           cp -r data _site/data
-          cp -r images _site/images
           touch _site/.nojekyll
+          du -sh _site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
