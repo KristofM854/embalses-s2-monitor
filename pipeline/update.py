@@ -69,14 +69,18 @@ def main(argv=None):
     remaining = max(len(todo) - a.max_images, 0)
     todo = todo[:a.max_images]
     print(f"Rendering {len(todo)} image pairs ({remaining} left for later runs)", flush=True)
-    failed, skipped, fatal = [], [], []
+    failed, skipped, fatal, reported = [], [], [], []
     deadline = t0 + 60 * a.time_budget_min
 
     def job(r, d):
         if fatal or time.monotonic() > deadline:
             return "skipped"
         p = lambda k: os.path.join(a.images_dir, store.image_name(r, d, k))
-        gee.render_images(outlines[r], d, p("rgb"), p("ndci"))
+        try:
+            gee.render_images(outlines[r], d, p("rgb"), p("ndci"))
+        except gee.PermanentError:
+            fatal.append((r, d))  # set in the worker, so other workers stop at once
+            raise
         return "ok"
 
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
@@ -86,10 +90,10 @@ def main(argv=None):
                 if f.result() == "skipped":
                     skipped.append(futs[f])
             except gee.PermanentError as e:
-                if not fatal:
+                if not reported:
                     print(f"::error::Images stopped: {str(e)[:300]}. The service account needs the "
                           "role 'Earth Engine Resource Writer' (see docs/SETUP.md).", flush=True)
-                fatal.append(futs[f])
+                    reported.append(True)
             except Exception as e:  # one bad scene must not stop the run
                 failed.append(futs[f])
                 print(f"  image failed {futs[f]}: {str(e)[:200]}", flush=True)
