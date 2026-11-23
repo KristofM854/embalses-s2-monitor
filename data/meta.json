@@ -1,19 +1,19 @@
 {
-  "updated_utc": "2026-11-23T10:14:36Z",
+  "updated_utc": "2026-11-23T11:07:17Z",
   "reservoirs": {
     "Hatillo": {
       "first_date": "2017-02-20",
       "last_date": "2026-11-20",
-      "n_dates": 1045,
-      "n_dates_50pct_clear": 653,
-      "n_images": 0
+      "n_dates": 1044,
+      "n_dates_50pct_clear": 642,
+      "n_images": 787
     },
     "Valdesia": {
       "first_date": "2017-02-20",
       "last_date": "2026-11-20",
-      "n_dates": 997,
-      "n_dates_50pct_clear": 631,
-      "n_images": 0
+      "n_dates": 995,
+      "n_dates_50pct_clear": 610,
+      "n_images": 740
     }
   }
 }
