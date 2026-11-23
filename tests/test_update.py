@@ -41,3 +41,35 @@ def test_full_then_incremental(tmp_path, monkeypatch):
     assert calls[0][0] == "2024-05-15"  # last date (06-29) minus 45 days
     j = json.loads((tmp_path / "data" / "ndci.json").read_text())
     assert sum(j["img"]) == 10 and len(set(zip(j["reservoir"], j["date"]))) == len(j["date"])
+
+
+def test_permission_error_stops_images_without_retry(tmp_path, monkeypatch):
+    import ee
+    calls = []
+    monkeypatch.setattr(gee, "init", lambda project=None: None)
+    monkeypatch.setattr(gee, "load_or_build_outline", lambda name, d: ({"type": "Point"}, 100, False))
+    monkeypatch.setattr(gee, "mark_backfilled", lambda name, d: None)
+    monkeypatch.setattr(gee, "scene_stats", fake_stats)
+    monkeypatch.setattr(gee.time, "sleep", lambda s: calls.append("sleep"))
+
+    def denied(geom, date):
+        calls.append(date)
+        raise ee.EEException("Permission 'earthengine.thumbnails.create' denied")
+    monkeypatch.setattr(gee, "thumb_urls", denied)
+    args = ["--data-dir", str(tmp_path / "data"), "--images-dir", str(tmp_path / "img"),
+            "--start", "2024-01-01", "--end", "2024-04-01", "--workers", "1"]
+    assert update.main(args) == 1                       # run is marked failed ...
+    assert "sleep" not in calls and len(calls) == 1     # ... after one attempt, no retries
+    assert (tmp_path / "data" / "reservoir_ndci.csv").exists()  # data still written
+
+
+def test_time_budget_leaves_images_for_next_run(tmp_path, monkeypatch):
+    rendered = []
+    monkeypatch.setattr(gee, "init", lambda project=None: None)
+    monkeypatch.setattr(gee, "load_or_build_outline", lambda name, d: ({"type": "Point"}, 100, False))
+    monkeypatch.setattr(gee, "mark_backfilled", lambda name, d: None)
+    monkeypatch.setattr(gee, "scene_stats", fake_stats)
+    monkeypatch.setattr(gee, "render_images", lambda *a: rendered.append(a))
+    args = ["--data-dir", str(tmp_path / "data"), "--images-dir", str(tmp_path / "img"),
+            "--start", "2024-01-01", "--end", "2024-04-01", "--time-budget-min", "0"]
+    assert update.main(args) == 0 and rendered == []

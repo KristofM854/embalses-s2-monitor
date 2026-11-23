@@ -15,11 +15,12 @@ interface, so GitHub menu names are given in English only.
    **Create and continue** [**Erstellen und fortfahren**].
 3. Under **Grant this service account access to project** [**Diesem Dienstkonto Zugriff
    auf das Projekt gewähren**] → **Select a role** [**Rolle auswählen**], add these two roles:
-   - **Earth Engine Resource Viewer** (`roles/earthengine.viewer`)
+   - **Earth Engine Resource Writer** (`roles/earthengine.writer`). "Viewer" is not enough:
+     it cannot render the dashboard images (`earthengine.thumbnails.create`).
    - **Service Usage Consumer** (`roles/serviceusage.serviceUsageConsumer`)
 
    Role names are translated in the German console. Type the role ID into the filter
-   (`earthengine.viewer`, `serviceUsageConsumer`) to find them in any language.
+   (`earthengine.writer`, `serviceUsageConsumer`) to find them in any language.
    Then **Continue** [**Weiter**] → **Done** [**Fertig**].
 4. Open the account → **Keys** [**Schlüssel**] → **Add key** [**Schlüssel hinzufügen**] →
    **Create new key** [**Neuen Schlüssel erstellen**] → key type **JSON** [**Schlüsseltyp:
