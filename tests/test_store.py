@@ -68,7 +68,8 @@ def test_metadata_in_csv_and_excel(tmp_path):
     assert len(store.load(tmp_path / "reservoir_ndci.csv")) == 1   # header skipped on read
     wb = load_workbook(tmp_path / "reservoir_ndci.xlsx")
     assert wb.sheetnames[:2] == ["Léame · Read me", "Metadatos · Metadata"]
-    meta_cols = [r[0].value for r in wb["Metadatos · Metadata"].iter_rows(min_row=2)]
-    assert meta_cols == [c[0] for c in M.COLUMNS] == store.COLUMNS
+    rows_ = [(r[0].value, r[1].value) for r in wb["Metadatos · Metadata"].iter_rows(min_row=2)]
+    assert [c for sh, c in rows_ if sh != store.TEMP_SHEET] == [c[0] for c in M.COLUMNS] == store.COLUMNS
+    assert [c for sh, c in rows_ if sh == store.TEMP_SHEET] == store.TEMP_COLUMNS
     cols = json.loads((tmp_path / "columns.json").read_text())
     assert [c["name"] for c in cols] == store.COLUMNS

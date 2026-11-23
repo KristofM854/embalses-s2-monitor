@@ -72,6 +72,58 @@ def tidy(df):
     return df.reindex(columns=COLUMNS)
 
 
+TEMP_SHEET = "Temperatura · Temperature"
+TEMP_COLUMNS = [c[0] for c in M.TEMP_COLUMNS]
+
+
+def load_temp(path):
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=TEMP_COLUMNS)
+    return pd.read_csv(path, dtype={"date": str, "scene": str}, comment="#").reindex(columns=TEMP_COLUMNS)
+
+
+def tidy_temp(df):
+    df = df.reindex(columns=TEMP_COLUMNS)
+    for c in ("n_valid", "n_total"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
+    df = df[df["n_valid"] > 0]
+    df["frac_valid"] = (df["n_valid"] / df["n_total"]).astype(float).round(4)
+    for c in ("temp_p10", "temp_p50", "temp_p90"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
+    df = (df.sort_values("n_valid", ascending=False, kind="stable")
+            .drop_duplicates(subset=["reservoir", "date"], keep="first"))
+    return df.sort_values(["reservoir", "date"]).reset_index(drop=True)
+
+
+def upsert_temp(old, new, reservoir, start, end):
+    keep = ~((old["reservoir"] == reservoir) & (old["date"] >= start) & (old["date"] < end))
+    parts = [p.reindex(columns=TEMP_COLUMNS) for p in (old[keep], new) if not p.empty]
+    return tidy_temp(pd.concat(parts, ignore_index=True)) if parts else old.iloc[0:0]
+
+
+def write_columnar(df, path):
+    cols = {c: [None if pd.isna(v) else (int(v) if c in ("n_valid", "n_total") else v)
+                for v in df[c].tolist()] for c in df.columns}
+    with open(path, "w") as fh:
+        json.dump(cols, fh, separators=(",", ":"))
+
+
+def predict_passes(recent, repeat_days, horizon_days):
+    """Future pass dates from recent acquisitions: each spacecraft repeats its
+    ground track every `repeat_days`. Anchored on the last observed date, so the
+    result only changes when new acquisitions are seen."""
+    from datetime import date, timedelta
+    out = set()
+    for sat, d in recent:
+        t = date.fromisoformat(d)
+        for k in range(1, horizon_days // repeat_days + 2):
+            out.add(((t + timedelta(days=k * repeat_days)).isoformat(), sat))
+    last = max((d for _, d in recent), default=None)
+    seen = {(d, s) for s, d in recent}
+    # keep only dates after the last observation that have not been observed
+    return sorted(p for p in out if last is None or (p[0] > last and p not in seen))
+
+
 def image_name(reservoir, date, kind):
     return f"{reservoir}/{date}_{kind}.webp"
 
@@ -81,39 +133,45 @@ def has_images(images_dir, reservoir, date):
                for k in ("rgb", "ndci"))
 
 
-def csv_header(updated):
+def csv_header(updated, general=M.GENERAL, columns=M.COLUMNS, title="Sentinel-2 NDCI, Valdesia y Hatillo"):
     """Comment lines above the CSV table. Read with comment="#" (pandas) or
     comment.char = "#" (R)."""
-    lines = [f"Sentinel-2 NDCI, Valdesia y Hatillo. Updated / Actualizado: {updated}",
+    lines = [f"{title}. Updated / Actualizado: {updated}",
              "Lines starting with # are metadata / Las líneas que empiezan con # son metadatos."]
-    for en, es, txt_en, txt_es in M.GENERAL:
+    for en, es, txt_en, txt_es in general:
         lines += [f"{en}: {txt_en}", f"{es}: {txt_es}"]
     lines += ["Columns / Columnas: name | unit | description, how to read / "
               "nombre | unidad | descripción, cómo leerlo"]
-    for n, u, en, es, r_en, r_es in M.COLUMNS:
+    for n, u, en, es, r_en, r_es in columns:
         lines += [f"  {n} | {u} | EN: {en}" + (f" {r_en}" if r_en else ""),
                   f"  {n} | {u} | ES: {es}" + (f" {r_es}" if r_es else "")]
     return "".join(f"# {l}\n" for l in lines)
 
 
-def write_csv(df, path, updated):
+def write_csv(df, path, updated, **header):
     with open(path, "w", encoding="utf-8", newline="") as fh:
-        fh.write(csv_header(updated))
+        fh.write(csv_header(updated, **header))
         df.to_csv(fh, index=False)
 
 
-def write_xlsx(df, path, updated):
+def write_xlsx(df, path, updated, temp=None):
     readme = pd.DataFrame(
-        [("Updated", "Actualizado", updated, updated)] + list(M.GENERAL),
+        [("Updated", "Actualizado", updated, updated)] + list(M.GENERAL)
+        + [(f"Temperature: {a}", f"Temperatura: {b}", c, d) for a, b, c, d in M.TEMP_GENERAL],
         columns=["Item", "Tema", "English", "Español"])
-    meta = pd.DataFrame(M.COLUMNS, columns=[
-        "Column / Columna", "Unit / Unidad", "Description", "Descripción",
-        "How to read it", "Cómo leerlo"])
+    cols = ["Column / Columna", "Unit / Unidad", "Description", "Descripción",
+            "How to read it", "Cómo leerlo"]
+    meta = pd.concat([
+        pd.DataFrame(M.COLUMNS, columns=cols).assign(**{"Sheet / Hoja": "Valdesia, Hatillo"}),
+        pd.DataFrame(M.TEMP_COLUMNS, columns=cols).assign(**{"Sheet / Hoja": TEMP_SHEET})])
+    meta = meta[["Sheet / Hoja"] + cols]
     with pd.ExcelWriter(path, engine="openpyxl") as xw:
         readme.to_excel(xw, sheet_name="Léame · Read me", index=False)
         meta.to_excel(xw, sheet_name="Metadatos · Metadata", index=False)
         for name, g in df.groupby("reservoir"):
             g.to_excel(xw, sheet_name=name[:31], index=False)
+        if temp is not None and not temp.empty:
+            temp.to_excel(xw, sheet_name=TEMP_SHEET, index=False)
         for ws in xw.book.worksheets:  # readable column widths, wrapped text
             for col in ws.columns:
                 width = min(max(len(str(c.value or "")) for c in col) + 2, 70)
@@ -124,14 +182,19 @@ def write_xlsx(df, path, updated):
             ws.freeze_panes = "A2"
 
 
-def write_outputs(df, data_dir, images_dir):
+def write_outputs(df, data_dir, images_dir, temp=None):
     os.makedirs(data_dir, exist_ok=True)
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     write_csv(df, os.path.join(data_dir, "reservoir_ndci.csv"), updated)
-    write_xlsx(df, os.path.join(data_dir, "reservoir_ndci.xlsx"), updated)
+    if temp is not None:
+        write_csv(temp, os.path.join(data_dir, "landsat_temperature.csv"), updated,
+                  general=M.TEMP_GENERAL, columns=M.TEMP_COLUMNS,
+                  title="Landsat 8/9 water surface temperature, Valdesia y Hatillo")
+        write_columnar(temp, os.path.join(data_dir, "temperature.json"))
+    write_xlsx(df, os.path.join(data_dir, "reservoir_ndci.xlsx"), updated, temp)
+    keys = ("name", "unit", "en", "es", "read_en", "read_es")
     with open(os.path.join(data_dir, "columns.json"), "w") as fh:
-        json.dump([dict(zip(("name", "unit", "en", "es", "read_en", "read_es"), c))
-                   for c in M.COLUMNS], fh, ensure_ascii=False, indent=1)
+        json.dump([dict(zip(keys, c)) for c in M.COLUMNS], fh, ensure_ascii=False, indent=1)
 
     # Compact column-oriented JSON for the dashboard
     img = [has_images(images_dir, r, d) for r, d in zip(df["reservoir"], df["date"])]

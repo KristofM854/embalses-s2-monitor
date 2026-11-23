@@ -30,6 +30,13 @@
     <div id="cards" class="cards" aria-live="polite"></div>
   </section>
 
+  <!-- 2. Next passes -->
+  <section>
+    <h2 data-i18n="h_passes"></h2>
+    <p class="note" data-i18n="passes_help"></p>
+    <div id="passes" class="cards"></div>
+  </section>
+
   <!-- Image viewer (opens from cards, charts, table) -->
   <section id="viewer" class="viewer" hidden>
     <div class="viewer-head">
@@ -42,9 +49,12 @@
     </div>
     <p id="v-summary" class="v-summary"></p>
     <ul id="v-notes" class="notes"></ul>
+    <div class="zoom-tools" id="v-tools"></div>
     <div class="pair">
-      <figure><img id="v-rgb" alt=""><figcaption data-i18n="cap_rgb"></figcaption></figure>
-      <figure><img id="v-ndci" alt=""><figcaption data-i18n="cap_ndci"></figcaption></figure>
+      <figure><div class="zoombox"><div class="zoomcontent"><img id="v-rgb" alt=""><div class="markers"></div></div></div>
+        <figcaption data-i18n="cap_rgb"></figcaption></figure>
+      <figure><div class="zoombox"><div class="zoomcontent"><img id="v-ndci" alt=""><div class="markers"></div></div></div>
+        <figcaption data-i18n="cap_ndci"></figcaption></figure>
     </div>
     <p id="v-noimg" class="note" hidden data-i18n="noimg"></p>
     <div class="legend">
@@ -68,6 +78,28 @@
     <h2 data-i18n="h_season"></h2>
     <p class="note" data-i18n="season_help"></p>
     <div id="season" class="season"></div>
+  </section>
+
+  <!-- 4. Where -->
+  <section id="maps">
+    <h2 data-i18n="h_maps"></h2>
+    <p class="note" data-i18n="maps_help"></p>
+    <div class="filters">
+      <label><span data-i18n="f_res"></span><select id="m-res"></select></label>
+      <div class="quick" role="group">
+        <button type="button" data-map="freq" data-i18n="map_freq"></button>
+        <button type="button" data-map="mean" data-i18n="map_mean"></button>
+      </div>
+    </div>
+    <div class="zoom-tools" id="m-tools"></div>
+    <div class="map-wrap">
+      <div class="zoombox"><div class="zoomcontent"><img id="m-img" alt=""><div class="markers"></div></div></div>
+    </div>
+    <div class="legend">
+      <div class="bar seq"></div>
+      <div class="legend-labels"><span id="m-lo"></span><span id="m-hi"></span></div>
+      <p class="note" id="m-note"></p>
+    </div>
   </section>
 
   <!-- 3. History -->
@@ -102,6 +134,13 @@
     </details>
   </section>
 
+  <!-- 6. Temperature -->
+  <section>
+    <h2 data-i18n="h_temp"></h2>
+    <p class="note" data-i18n="temp_help"></p>
+    <div id="charts-temp"></div>
+  </section>
+
   <!-- 4. Table -->
   <section>
     <div class="table-head">
@@ -111,12 +150,26 @@
     <div class="table-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
   </section>
 
-  <!-- 5. Downloads -->
+  <!-- 8. Points -->
+  <section id="puntos">
+    <h2 data-i18n="h_points"></h2>
+    <p class="note" data-i18n="points_help"></p>
+    <div class="table-wrap points-wrap"><table id="pts"><thead></thead><tbody></tbody></table></div>
+    <p id="pts-empty" class="note" data-i18n="points_empty"></p>
+    <div class="top-actions">
+      <button type="button" class="btn" id="pts-gpx" data-i18n="points_gpx"></button>
+      <button type="button" class="btn" id="pts-csv" data-i18n="points_csv"></button>
+      <button type="button" class="btn" id="pts-clear" data-i18n="points_clear"></button>
+    </div>
+  </section>
+
+  <!-- 9. Downloads -->
   <section id="descargas">
     <h2 data-i18n="h_download"></h2>
     <ul class="downloads">
       <li><a class="btn" href="data/reservoir_ndci.xlsx" download data-i18n="dl_xlsx"></a> <span data-i18n="dl_xlsx_help"></span></li>
       <li><a class="btn" href="data/reservoir_ndci.csv" download data-i18n="dl_csv"></a> <span data-i18n="dl_csv_help"></span></li>
+      <li><a class="btn" href="data/landsat_temperature.csv" download data-i18n="dl_temp"></a> <span data-i18n="dl_temp_help"></span></li>
       <li><button type="button" class="btn" id="dl-filtered" data-i18n="dl_filtered"></button> <span data-i18n="dl_filtered_help"></span></li>
       <li><a class="btn" href="data/aoi_Hatillo.geojson" download>Hatillo.geojson</a>
           <a class="btn" href="data/aoi_Valdesia.geojson" download>Valdesia.geojson</a>
@@ -133,6 +186,7 @@
   <footer class="note" data-i18n-html="footer"></footer>
 </main>
 <script src="i18n.js"></script>
+<script src="sampling.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

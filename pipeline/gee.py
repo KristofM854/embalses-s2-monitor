@@ -14,6 +14,7 @@ import json
 import math
 import os
 import time
+from datetime import datetime, timezone
 
 import ee
 import pandas as pd
@@ -21,8 +22,11 @@ import requests
 from PIL import Image
 
 from . import config as C
+from . import grid as G
 
 S2 = "COPERNICUS/S2_SR_HARMONIZED"
+LC08 = "LANDSAT/LC08/C02/T1_L2"
+LC09 = "LANDSAT/LC09/C02/T1_L2"
 CSP = "GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED"
 
 
@@ -287,10 +291,9 @@ def scene_stats(name, geom, n_total, start, end):
 
 # Images -----------------------------------------------------------------------
 
-def thumb_urls(geom, date):
-    """True colour, and true colour with NDCI on clear water, for one date."""
+def thumb_urls(geom, date, grid):
+    """True colour, and true colour with NDCI on clear water, for one date, on `grid`."""
     aoi = ee.Geometry(geom)
-    region = aoi.bounds().buffer(1000).bounds()
     d = ee.Date(date)
     img = ee.ImageCollection(S2).filterBounds(aoi).filterDate(d, d.advance(1, "day")).mosaic()
     cs = (ee.ImageCollection(CSP).filterBounds(aoi).filterDate(d, d.advance(1, "day"))
@@ -300,7 +303,7 @@ def thumb_urls(geom, date):
             .updateMask(cs.gte(C.CS_THRESHOLD)).clip(aoi))
     overlay = rgb.blend(ndci.visualize(min=C.NDCI_VIS[0], max=C.NDCI_VIS[1],
                                        palette=C.NDCI_PALETTE))
-    params = {"region": region, "dimensions": C.IMG_DIM, "format": "png", "crs": C.CRS}
+    params = G.thumb_params(grid)
     return {"rgb": rgb.getThumbURL(params), "ndci": overlay.getThumbURL(params)}
 
 
@@ -314,7 +317,135 @@ def _fetch_webp(url, path):
     os.replace(tmp, path)
 
 
-def render_images(geom, date, rgb_path, ndci_path):
-    urls = retry(thumb_urls, geom, date)
+def render_images(geom, date, rgb_path, ndci_path, grid):
+    urls = retry(thumb_urls, geom, date, grid)
     retry(_fetch_webp, urls["rgb"], rgb_path)
     retry(_fetch_webp, urls["ndci"], ndci_path)
+
+
+# Summary maps -------------------------------------------------------------------
+
+def _clear_ndci(scene_ids, aoi):
+    """NDCI on clear pixels of the given (usable) scenes."""
+    s2 = (ee.ImageCollection(S2).filterBounds(aoi)
+          .filter(ee.Filter.inList("system:index", scene_ids))
+          .linkCollection(ee.ImageCollection(CSP), ["cs_cdf"]))
+    return s2.map(lambda img: img.normalizedDifference(["B5", "B4"]).rename("ndci")
+                  .updateMask(img.select("cs_cdf").gte(C.CS_THRESHOLD)))
+
+
+def _basemap(aoi, end):
+    """Cloud-free true-colour background: per-pixel median of the clear looks of one year."""
+    s2 = (ee.ImageCollection(S2).filterBounds(aoi)
+          .filterDate(ee.Date(end).advance(-1, "year"), end)
+          .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 60))
+          .linkCollection(ee.ImageCollection(CSP), ["cs_cdf"]))
+    med = s2.map(lambda i: i.select(["B4", "B3", "B2"])
+                 .updateMask(i.select("cs_cdf").gte(C.CS_THRESHOLD))).median()
+    return med.visualize(bands=["B4", "B3", "B2"], min=0, max=1500, gamma=1.4)
+
+
+def _map_urls(geom, grid, scene_ids, end):
+    o = C.MAPS
+    aoi = ee.Geometry(geom)
+    ndci = _clear_ndci(scene_ids, aoi)
+    n = ndci.count()
+    ok = n.gte(o["min_obs"])
+    mean = ndci.mean().updateMask(ok).clip(aoi)
+    freq = ndci.map(lambda i: i.gt(o["green_ndci"])).mean().updateMask(ok).clip(aoi)
+    # stretch the typical-value map to this reservoir's own range
+    rng = mean.reduceRegion(ee.Reducer.percentile([2, 98]), aoi, C.SCALE, crs=C.CRS,
+                            maxPixels=1e9, tileScale=4).getInfo()
+    lo, hi = rng.get("ndci_p2"), rng.get("ndci_p98")
+    if lo is None or hi is None:
+        raise ValueError("not enough clear observations for the summary maps")
+    hi = max(hi, lo + 0.02)
+    base = _basemap(aoi, end)
+    params = G.thumb_params(grid)
+    pal = o["palette"]
+    return {
+        "mean": base.blend(mean.visualize(min=lo, max=hi, palette=pal)).getThumbURL(params),
+        "freq": base.blend(freq.visualize(min=0, max=o["freq_max"], palette=pal)).getThumbURL(params),
+        "mean_range": [round(lo, 3), round(hi, 3)],
+    }
+
+
+def render_maps(geom, grid, scene_ids, end, mean_path, freq_path):
+    r = retry(_map_urls, geom, grid, scene_ids, end)
+    retry(_fetch_webp, r["mean"], mean_path)
+    retry(_fetch_webp, r["freq"], freq_path)
+    return r["mean_range"]
+
+
+# Landsat 8/9 surface temperature -----------------------------------------------
+
+def _landsat(aoi, start, end):
+    col = (ee.ImageCollection(LC08).merge(ee.ImageCollection(LC09))
+           .filterBounds(aoi).filterDate(start, end))
+    return col
+
+
+def _landsat_stats(geom, start, end):
+    aoi = ee.Geometry(geom)
+    reducer = (ee.Reducer.percentile([10, 50, 90])
+               .combine(ee.Reducer.count(), sharedInputs=True)).unweighted()
+
+    def to_feature(img):
+        qa = img.select("QA_PIXEL")
+        clear = qa.bitwiseAnd(0b11111).eq(0)  # fill, dilated cloud, cirrus, cloud, shadow
+        lst = (img.select("ST_B10").multiply(0.00341802).add(149.0).subtract(273.15)
+               .rename("LST").updateMask(clear))
+        s = lst.reduceRegion(reducer=reducer, geometry=aoi, scale=30, crs=C.CRS,
+                             maxPixels=1e9, tileScale=4)
+        return ee.Feature(None, s).set({
+            "date": img.date().format("YYYY-MM-dd"),
+            "scene": img.get("LANDSAT_PRODUCT_ID"),
+            "spacecraft": img.get("SPACECRAFT_ID")})
+
+    feats = _landsat(aoi, start, end).map(to_feature).getInfo()["features"]
+    return pd.DataFrame([f["properties"] for f in feats])
+
+
+def landsat_aoi(geom):
+    """Outline shrunk further, because the thermal band is 100 m and mixes in warm land."""
+    return ee.Geometry(geom).buffer(-C.LANDSAT["extra_buffer_m"], 5).transform("EPSG:4326", 1)
+
+
+def landsat_stats(name, geom_t, n_total, start, end):
+    df = retry(_landsat_stats, geom_t, start, end)
+    if df.empty:
+        return df
+    df = df.reindex(columns=["date", "scene", "spacecraft", "LST_count", "LST_p10", "LST_p50", "LST_p90"])
+    out = pd.DataFrame({
+        "reservoir": name, "date": df["date"],
+        "temp_p10": df["LST_p10"], "temp_p50": df["LST_p50"], "temp_p90": df["LST_p90"],
+        "n_valid": pd.to_numeric(df["LST_count"]).fillna(0).astype(int),
+        "n_total": n_total, "spacecraft": df["spacecraft"], "scene": df["scene"]})
+    return out
+
+
+def landsat_outline(geom):
+    g = retry(lambda: landsat_aoi(geom).getInfo())
+    g = polygons_only(g, 0)
+    n = retry(lambda: ee.Image(1).reduceRegion(
+        reducer=ee.Reducer.count().unweighted(), geometry=ee.Geometry(g), scale=30,
+        crs=C.CRS, maxPixels=1e9).get("constant").getInfo())
+    return g, n
+
+
+# Satellite passes ---------------------------------------------------------------
+
+def recent_passes(geom, days=48):
+    """Acquisition dates per spacecraft over the reservoir in the last `days` days,
+    clouds or not. Used to predict the next passes (repeat cycles are fixed)."""
+    aoi = ee.Geometry(geom)
+    end = ee.Date(datetime.now(timezone.utc).strftime("%Y-%m-%d")).advance(1, "day")
+    start = end.advance(-days, "day")
+    s2 = ee.ImageCollection(S2).filterBounds(aoi).filterDate(start, end)
+    ls = _landsat(aoi, start, end)
+    fmt = lambda c, key: c.map(lambda i: ee.Feature(None, {
+        "d": i.date().format("YYYY-MM-dd"), "sat": i.get(key)})).distinct(["d", "sat"])
+    res = ee.Dictionary({"s2": fmt(s2, "SPACECRAFT_NAME").toList(500),
+                         "landsat": fmt(ls, "SPACECRAFT_ID").toList(500)}).getInfo()
+    return {k: sorted({(f["properties"]["sat"], f["properties"]["d"]) for f in v})
+            for k, v in res.items()}
