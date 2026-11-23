@@ -1,0 +1,114 @@
+[
+ {
+  "name": "reservoir",
+  "unit": "-",
+  "en": "Reservoir name.",
+  "es": "Nombre del embalse.",
+  "read_en": "",
+  "read_es": ""
+ },
+ {
+  "name": "date",
+  "unit": "YYYY-MM-DD",
+  "en": "Date of the Sentinel-2 image (UTC). The satellite passes at about 15:15 UTC (11:15 local time).",
+  "es": "Fecha de la imagen Sentinel-2 (UTC). El satélite pasa a las 15:15 UTC aprox. (11:15 hora local).",
+  "read_en": "Use this date to compare with field samples taken the same day.",
+  "read_es": "Use esta fecha para comparar con muestras de campo del mismo día."
+ },
+ {
+  "name": "ndci_p50",
+  "unit": "index (-1 to 1)",
+  "en": "Median NDCI over the cloud-free water of the reservoir. NDCI = (B5 - B4) / (B5 + B4), red-edge (705 nm) versus red (665 nm) reflectance.",
+  "es": "Mediana del NDCI sobre el agua sin nubes del embalse. NDCI = (B5 - B4) / (B5 + B4), reflectancia del borde rojo (705 nm) frente al rojo (665 nm).",
+  "read_en": "Typical chlorophyll level of the reservoir as a whole. Higher = greener water.",
+  "read_es": "Nivel típico de clorofila del embalse en conjunto. Más alto = agua más verde."
+ },
+ {
+  "name": "ndci_p90",
+  "unit": "index (-1 to 1)",
+  "en": "90th percentile of NDCI: the value exceeded by the greenest 10 % of the water.",
+  "es": "Percentil 90 del NDCI: valor que supera el 10 % más verde del agua.",
+  "read_en": "Chlorophyll in the greenest parts. Reacts to blooms that cover only part of the reservoir.",
+  "read_es": "Clorofila en las zonas más verdes. Reacciona a floraciones que cubren solo una parte del embalse."
+ },
+ {
+  "name": "ndci_mean",
+  "unit": "index (-1 to 1)",
+  "en": "Mean NDCI over the cloud-free water.",
+  "es": "Promedio del NDCI sobre el agua sin nubes.",
+  "read_en": "Similar to the median, but more affected by a few extreme pixels.",
+  "read_es": "Parecido a la mediana, pero más afectado por pocos píxeles extremos."
+ },
+ {
+  "name": "frac_ndci_gt_0.1",
+  "unit": "fraction (0 to 1)",
+  "en": "Share of the cloud-free water with NDCI > 0.1.",
+  "es": "Fracción del agua sin nubes con NDCI > 0,1.",
+  "read_en": "How much of the reservoir is clearly green. 0.3 = 30 % of the surface.",
+  "read_es": "Cuánto del embalse está claramente verde. 0,3 = 30 % de la superficie."
+ },
+ {
+  "name": "frac_ndci_gt_0.2",
+  "unit": "fraction (0 to 1)",
+  "en": "Share of the cloud-free water with NDCI > 0.2.",
+  "es": "Fracción del agua sin nubes con NDCI > 0,2.",
+  "read_en": "How much of the reservoir is very green.",
+  "read_es": "Cuánto del embalse está muy verde."
+ },
+ {
+  "name": "b4_p50",
+  "unit": "reflectance (0 to 1)",
+  "en": "Median red reflectance (Sentinel-2 band B4, 665 nm).",
+  "es": "Mediana de la reflectancia roja (banda B4 de Sentinel-2, 665 nm).",
+  "read_en": "Rises with mud or sediment in the water. If it is high together with NDCI, the NDCI may be raised by sediment, not algae.",
+  "read_es": "Sube con barro o sedimento en el agua. Si está alta junto con el NDCI, el NDCI puede deberse a sedimento y no a algas."
+ },
+ {
+  "name": "b8_p50",
+  "unit": "reflectance (0 to 1)",
+  "en": "Median near-infrared reflectance (band B8, 842 nm).",
+  "es": "Mediana de la reflectancia del infrarrojo cercano (banda B8, 842 nm).",
+  "read_en": "Clear water is dark in near-infrared (close to 0).",
+  "read_es": "El agua limpia es oscura en el infrarrojo cercano (cerca de 0)."
+ },
+ {
+  "name": "frac_high_nir",
+  "unit": "fraction (0 to 1)",
+  "en": "Share of the cloud-free water with near-infrared reflectance above 0.05.",
+  "es": "Fracción del agua sin nubes con reflectancia infrarroja mayor que 0,05.",
+  "read_en": "Water should not be bright in near-infrared. Bright pixels are surface scum, floating plants (e.g. water hyacinth), sun glint or haze. Check the image.",
+  "read_es": "El agua no debería ser brillante en el infrarrojo. Los píxeles brillantes son nata de algas, plantas flotantes (p. ej. jacinto de agua), reflejo del sol o neblina. Revise la imagen."
+ },
+ {
+  "name": "n_valid",
+  "unit": "pixels (20 m)",
+  "en": "Number of cloud-free water pixels used.",
+  "es": "Número de píxeles de agua sin nubes usados.",
+  "read_en": "",
+  "read_es": ""
+ },
+ {
+  "name": "n_total",
+  "unit": "pixels (20 m)",
+  "en": "Number of water pixels in the reservoir outline.",
+  "es": "Número de píxeles de agua dentro del contorno del embalse.",
+  "read_en": "",
+  "read_es": ""
+ },
+ {
+  "name": "frac_valid",
+  "unit": "fraction (0 to 1)",
+  "en": "Cloud-free share of the reservoir (n_valid / n_total).",
+  "es": "Fracción del embalse sin nubes (n_valid / n_total).",
+  "read_en": "Below 0.5 (half the reservoir hidden by clouds), treat the values with caution.",
+  "read_es": "Por debajo de 0,5 (la mitad del embalse cubierta por nubes), use los valores con cautela."
+ },
+ {
+  "name": "scene",
+  "unit": "-",
+  "en": "Identifier of the Sentinel-2 image in Google Earth Engine.",
+  "es": "Identificador de la imagen Sentinel-2 en Google Earth Engine.",
+  "read_en": "",
+  "read_es": ""
+ }
+]

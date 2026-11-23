@@ -4,6 +4,9 @@ import os
 from datetime import datetime, timezone
 
 import pandas as pd
+from openpyxl.styles import Alignment
+
+from . import metadata as M
 
 COLUMNS = [
     "reservoir", "date", "ndci_p50", "ndci_p90", "ndci_mean",
@@ -14,24 +17,6 @@ ROUND = {"ndci_p50": 4, "ndci_p90": 4, "ndci_mean": 4, "frac_ndci_gt_0.1": 4,
          "frac_ndci_gt_0.2": 4, "b4_p50": 4, "b8_p50": 4, "frac_high_nir": 4,
          "frac_valid": 4}
 
-DESCRIPTIONS = {
-    "reservoir": "Reservoir name / Nombre del embalse",
-    "date": "Sentinel-2 acquisition date (UTC, ~15:00) / Fecha de adquisición",
-    "ndci_p50": "Median NDCI over clear water pixels / Mediana de NDCI",
-    "ndci_p90": "90th percentile NDCI (patchy blooms) / Percentil 90 de NDCI",
-    "ndci_mean": "Mean NDCI / NDCI promedio",
-    "frac_ndci_gt_0.1": "Fraction of clear water pixels with NDCI > 0.1 / Fracción con NDCI > 0.1",
-    "frac_ndci_gt_0.2": "Fraction of clear water pixels with NDCI > 0.2 / Fracción con NDCI > 0.2",
-    "b4_p50": "Median red reflectance B4; rises with sediment / Reflectancia roja; sube con sedimento",
-    "b8_p50": "Median NIR reflectance B8 / Reflectancia NIR",
-    "frac_high_nir": "Fraction of pixels with B8 > 0.05 (scum, plants, glint, haze) / Fracción con B8 > 0.05",
-    "n_valid": "Clear water pixels (20 m) / Píxeles de agua despejados",
-    "n_total": "All water pixels in the outline / Píxeles de agua totales",
-    "frac_valid": "n_valid / n_total (cloud-free fraction) / Fracción sin nubes",
-    "scene": "Earth Engine image ID used / ID de la imagen",
-}
-
-
 def empty():
     return pd.DataFrame(columns=COLUMNS)
 
@@ -39,7 +24,7 @@ def empty():
 def load(path):
     if not os.path.exists(path):
         return empty()
-    df = pd.read_csv(path, dtype={"date": str, "scene": str})
+    df = pd.read_csv(path, dtype={"date": str, "scene": str}, comment="#")
     return df.reindex(columns=COLUMNS)
 
 
@@ -96,15 +81,57 @@ def has_images(images_dir, reservoir, date):
                for k in ("rgb", "ndci"))
 
 
-def write_outputs(df, data_dir, images_dir):
-    os.makedirs(data_dir, exist_ok=True)
-    df.to_csv(os.path.join(data_dir, "reservoir_ndci.csv"), index=False)
+def csv_header(updated):
+    """Comment lines above the CSV table. Read with comment="#" (pandas) or
+    comment.char = "#" (R)."""
+    lines = [f"Sentinel-2 NDCI, Valdesia y Hatillo. Updated / Actualizado: {updated}",
+             "Lines starting with # are metadata / Las líneas que empiezan con # son metadatos."]
+    for en, es, txt_en, txt_es in M.GENERAL:
+        lines += [f"{en}: {txt_en}", f"{es}: {txt_es}"]
+    lines += ["Columns / Columnas: name | unit | description, how to read / "
+              "nombre | unidad | descripción, cómo leerlo"]
+    for n, u, en, es, r_en, r_es in M.COLUMNS:
+        lines += [f"  {n} | {u} | EN: {en}" + (f" {r_en}" if r_en else ""),
+                  f"  {n} | {u} | ES: {es}" + (f" {r_es}" if r_es else "")]
+    return "".join(f"# {l}\n" for l in lines)
 
-    with pd.ExcelWriter(os.path.join(data_dir, "reservoir_ndci.xlsx")) as xw:
+
+def write_csv(df, path, updated):
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(csv_header(updated))
+        df.to_csv(fh, index=False)
+
+
+def write_xlsx(df, path, updated):
+    readme = pd.DataFrame(
+        [("Updated", "Actualizado", updated, updated)] + list(M.GENERAL),
+        columns=["Item", "Tema", "English", "Español"])
+    meta = pd.DataFrame(M.COLUMNS, columns=[
+        "Column / Columna", "Unit / Unidad", "Description", "Descripción",
+        "How to read it", "Cómo leerlo"])
+    with pd.ExcelWriter(path, engine="openpyxl") as xw:
+        readme.to_excel(xw, sheet_name="Léame · Read me", index=False)
+        meta.to_excel(xw, sheet_name="Metadatos · Metadata", index=False)
         for name, g in df.groupby("reservoir"):
             g.to_excel(xw, sheet_name=name[:31], index=False)
-        pd.DataFrame({"column": list(DESCRIPTIONS), "description": list(DESCRIPTIONS.values())}
-                     ).to_excel(xw, sheet_name="README", index=False)
+        for ws in xw.book.worksheets:  # readable column widths, wrapped text
+            for col in ws.columns:
+                width = min(max(len(str(c.value or "")) for c in col) + 2, 70)
+                ws.column_dimensions[col[0].column_letter].width = width
+                if width == 70:
+                    for c in col:
+                        c.alignment = Alignment(wrap_text=True, vertical="top")
+            ws.freeze_panes = "A2"
+
+
+def write_outputs(df, data_dir, images_dir):
+    os.makedirs(data_dir, exist_ok=True)
+    updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    write_csv(df, os.path.join(data_dir, "reservoir_ndci.csv"), updated)
+    write_xlsx(df, os.path.join(data_dir, "reservoir_ndci.xlsx"), updated)
+    with open(os.path.join(data_dir, "columns.json"), "w") as fh:
+        json.dump([dict(zip(("name", "unit", "en", "es", "read_en", "read_es"), c))
+                   for c in M.COLUMNS], fh, ensure_ascii=False, indent=1)
 
     # Compact column-oriented JSON for the dashboard
     img = [has_images(images_dir, r, d) for r, d in zip(df["reservoir"], df["date"])]
