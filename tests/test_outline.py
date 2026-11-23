@@ -77,3 +77,21 @@ def test_update_recomputes_series_after_outline_change(tmp_path, mocked, monkeyp
     assert ("Valdesia", "2024-01-01") in queried and ("Hatillo", "2024-01-01") not in queried
     df = pd.read_csv(tmp_path / "reservoir_ndci.csv")
     assert set(df[df.reservoir == "Valdesia"].n_total) == {1000}  # SQUARE -> 1000 in mock
+
+
+def test_polygons_only_on_real_outputs():
+    """The first real run left points, lines and slivers in the outlines."""
+    import os
+    for name, km2 in (("Hatillo", 20.35), ("Valdesia", 5.21)):
+        path = os.path.join(os.path.dirname(__file__), "fixtures", f"aoi_{name}_v1.geojson")
+        g = json.load(open(path))["features"][0]["geometry"]
+        assert g["type"] == "GeometryCollection"
+        clean = gee.polygons_only(g)
+        assert clean["type"] == "Polygon"
+        assert abs(gee._ring_area_m2(clean["coordinates"][0]) / 1e6 - km2) < 0.6  # outer ring
+
+
+def test_polygons_only_rejects_empty():
+    with pytest.raises(ValueError):
+        gee.polygons_only({"type": "GeometryCollection",
+                           "geometries": [{"type": "Point", "coordinates": [0, 0]}]})
