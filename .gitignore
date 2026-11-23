@@ -11,3 +11,6 @@ _site/
 *service-account*.json
 dashboard/data
 dashboard/images
+
+# Images live on the separate "images" branch (see README)
+/images/

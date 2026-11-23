@@ -29,10 +29,20 @@ jobs:
   update:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.commit.outputs.changed }}
+      changed: ${{ steps.commit.outputs.changed == 'true' || steps.images.outputs.changed == 'true' }}
     timeout-minutes: 330
     steps:
       - uses: actions/checkout@v5
+      - name: Get current images (branch "images", latest version only)
+        run: |
+          # Images live on their own branch that always holds a single commit, so they
+          # never pile up in the history of main. See README, "images branch".
+          if git ls-remote --exit-code --heads origin images > /dev/null; then
+            git fetch --depth 1 origin images
+            git worktree add --detach images FETCH_HEAD
+          else
+            git worktree add --orphan -b images images
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -58,10 +68,29 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data images
+          git add data
           if git diff --cached --quiet; then echo "No changes"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git commit -m "Data update $(date -u +%Y-%m-%d)"
           for i in 1 2 3; do git pull --rebase && git push && break; sleep 10; done
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish images
+        id: images
+        if: ${{ !cancelled() }}
+        working-directory: images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git rev-parse --verify -q HEAD > /dev/null; then
+            if git diff --cached --quiet; then echo "No image changes"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+            # Replace the single commit instead of adding one: only new images are uploaded,
+            # and removed images do not stay in any history.
+            git commit -q --amend -m "Images $(date -u +%Y-%m-%d)"
+          else
+            git commit -q -m "Images $(date -u +%Y-%m-%d)"
+          fi
+          git push -f origin HEAD:refs/heads/images
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
   deploy:

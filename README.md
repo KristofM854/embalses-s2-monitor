@@ -130,7 +130,7 @@ pipeline/        Python: consultas a Earth Engine (gee.py), tablas (store.py),
                  ajustes (config.py), inicio (update.py)
 dashboard/       panel estático (HTML/JS/CSS, Plotly incluido, textos ES/EN en i18n.js)
 data/            resultados: CSV, XLSX, JSON para el panel, contornos de los embalses
-images/          <embalse>/<fecha>_rgb.webp y _ndci.webp; maps/<embalse>_freq.webp y _mean.webp
+images/          (rama "images") <embalse>/<fecha>_rgb.webp y _ndci.webp; maps/<embalse>_freq.webp y _mean.webp
 analysis/        script de R para explorar el CSV (no necesita Earth Engine)
 tests/           pruebas automáticas
 .github/workflows/
@@ -154,6 +154,10 @@ docs/SETUP.md    configuración inicial: cuenta de servicio, secreto, Pages, pri
   Si dos imágenes del mismo día cubren el embalse, se usa la que tiene más píxeles despejados.
 - **Actualización:** cada ejecución vuelve a consultar los últimos 45 días para incluir imágenes
   tardías o reprocesadas.
+- **Rama "images":** las imágenes (unos 300 MB) no están en `main`, sino en la rama `images`, que
+  siempre tiene un solo commit: cada actualización lo reemplaza (amend + force push). Así las imágenes
+  no se acumulan en el historial y `main` queda pequeño. Para tenerlas en una copia local:
+  `git fetch origin images && git worktree add images FETCH_HEAD`.
 - **Imágenes:** para fechas con ≥ 30 % de agua despejada, primero las más recientes.
 - **Niveles del panel:** percentiles 50, 75 y 90 de `ndci_p90` de las fechas útiles del mismo embalse.
 - **Cuadrícula de las imágenes:** todas las imágenes de un embalse comparten una cuadrícula UTM 19N
@@ -171,6 +175,7 @@ docs/SETUP.md    configuración inicial: cuenta de servicio, secreto, Pages, pri
 pip install -r requirements.txt
 python -m pipeline.update --project hab-quiz-ae5a8 --max-images 20   # inicio de sesión en el navegador la primera vez
 python -m pytest -q
+git fetch origin images && git worktree add images FETCH_HEAD          # imágenes, para ver el panel
 cd dashboard && ln -s ../data data && ln -s ../images images && python -m http.server
 ```
 
@@ -301,7 +306,7 @@ pipeline/        Python: Earth Engine queries (gee.py), tables (store.py),
                  settings (config.py), entry point (update.py)
 dashboard/       static dashboard (HTML/JS/CSS, Plotly bundled, ES/EN text in i18n.js)
 data/            outputs: CSV, XLSX, JSON for the dashboard, reservoir outlines
-images/          <reservoir>/<date>_rgb.webp and _ndci.webp; maps/<reservoir>_freq.webp and _mean.webp
+images/          (branch "images") <reservoir>/<date>_rgb.webp and _ndci.webp; maps/<reservoir>_freq.webp and _mean.webp
 analysis/        R script for exploring the CSV (no Earth Engine needed)
 tests/           automated tests
 .github/workflows/
@@ -324,6 +329,10 @@ docs/SETUP.md    one-time setup: service account, secret, Pages, first run
   B4 and B8 medians; NIR flag. A pixel counts if its centre is inside the outline. If two images of
   the same day cover the reservoir, the one with more clear pixels is used.
 - **Updates:** each run re-queries the last 45 days to include late or reprocessed images.
+- **"images" branch:** the images (about 300 MB) are not on `main` but on the `images` branch, which
+  always holds a single commit: every update replaces it (amend + force push). This way images do not
+  pile up in the history and `main` stays small. To get them in a local copy:
+  `git fetch origin images && git worktree add images FETCH_HEAD`.
 - **Images:** for dates with ≥ 30 % clear water, newest first.
 - **Dashboard levels:** 50th, 75th and 90th percentiles of `ndci_p90` over the usable dates of the
   same reservoir.
@@ -342,6 +351,7 @@ docs/SETUP.md    one-time setup: service account, secret, Pages, first run
 pip install -r requirements.txt
 python -m pipeline.update --project hab-quiz-ae5a8 --max-images 20   # browser login on first use
 python -m pytest -q
+git fetch origin images && git worktree add images FETCH_HEAD          # images, to view the dashboard
 cd dashboard && ln -s ../data data && ln -s ../images images && python -m http.server
 ```
 
