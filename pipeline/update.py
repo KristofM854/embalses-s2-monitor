@@ -7,6 +7,7 @@
 import argparse
 import os
 import shutil
+import time
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -26,10 +27,13 @@ def main(argv=None):
     ap.add_argument("--max-images", type=int, default=300,
                     help="max reservoir-dates to render this run (newest first)")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--time-budget-min", type=float, default=240,
+                    help="stop starting new images after this many minutes (rest: next run)")
     ap.add_argument("--data-dir", default=os.path.join(ROOT, "data"))
     ap.add_argument("--images-dir", default=os.path.join(ROOT, "images"))
     a = ap.parse_args(argv)
 
+    t0 = time.monotonic()
     gee.init(a.project)
     csv = os.path.join(a.data_dir, "reservoir_ndci.csv")
     df = store.load(csv)
@@ -65,27 +69,39 @@ def main(argv=None):
     remaining = max(len(todo) - a.max_images, 0)
     todo = todo[:a.max_images]
     print(f"Rendering {len(todo)} image pairs ({remaining} left for later runs)", flush=True)
-    failed = []
+    failed, skipped, fatal = [], [], []
+    deadline = t0 + 60 * a.time_budget_min
 
     def job(r, d):
+        if fatal or time.monotonic() > deadline:
+            return "skipped"
         p = lambda k: os.path.join(a.images_dir, store.image_name(r, d, k))
         gee.render_images(outlines[r], d, p("rgb"), p("ndci"))
+        return "ok"
 
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         futs = {ex.submit(job, r, d): (r, d) for r, d in todo}
         for i, f in enumerate(as_completed(futs), 1):
             try:
-                f.result()
+                if f.result() == "skipped":
+                    skipped.append(futs[f])
+            except gee.PermanentError as e:
+                if not fatal:
+                    print(f"::error::Images stopped: {str(e)[:300]}. The service account needs the "
+                          "role 'Earth Engine Resource Writer' (see docs/SETUP.md).", flush=True)
+                fatal.append(futs[f])
             except Exception as e:  # one bad scene must not stop the run
                 failed.append(futs[f])
                 print(f"  image failed {futs[f]}: {str(e)[:200]}", flush=True)
             if i % 25 == 0:
                 print(f"  {i}/{len(todo)} images", flush=True)
+    remaining += len(skipped) + len(fatal)
+    failed += fatal
 
     meta = store.write_outputs(df, a.data_dir, a.images_dir)
+    done = len(todo) - len(failed) - len(skipped)
     lines = [f"Rows: {n_before} -> {len(df)}",
-             f"Images rendered: {len(todo) - len(failed)}, failed: {len(failed)}, "
-             f"left for later runs: {remaining}"]
+             f"Images rendered: {done}, failed: {len(failed)}, left for later runs: {remaining}"]
     for name, m in meta["reservoirs"].items():
         lines.append(f"{name}: {m['first_date']} to {m['last_date']}, {m['n_dates']} dates, "
                      f"{m['n_dates_50pct_clear']} at >=50% clear, {m['n_images']} with images")
@@ -94,7 +110,8 @@ def main(argv=None):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
             fh.write("### Sentinel-2 update\n\n" + "\n".join(f"- {l}" for l in lines) + "\n")
     # Fail the run only if many images failed (e.g. Earth Engine outage)
-    return 1 if todo and len(failed) > 0.5 * len(todo) else 0
+    attempted = len(todo) - len(skipped)
+    return 1 if fatal or (attempted and len(failed) > 0.5 * attempted) else 0
 
 
 if __name__ == "__main__":

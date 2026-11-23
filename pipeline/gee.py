@@ -44,11 +44,20 @@ def init(project=None):
         ee.Initialize(project=project)
 
 
+class PermanentError(RuntimeError):
+    """Retrying will not help (missing permission, bad project)."""
+
+
+_PERMANENT = ("permission", "denied", "not authorized", "unauthorized", "not registered")
+
+
 def retry(fn, *args, tries=4, **kw):
     for i in range(tries):
         try:
             return fn(*args, **kw)
         except (ee.EEException, requests.RequestException, OSError) as e:
+            if any(w in str(e).lower() for w in _PERMANENT):
+                raise PermanentError(str(e)) from e
             if i == tries - 1:
                 raise
             wait = 15 * 2 ** i
