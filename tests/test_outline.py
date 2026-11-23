@@ -7,7 +7,7 @@ import pytest
 from pipeline import config as C
 from pipeline import gee, update
 
-SQUARE = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
+SQUARE = {"type": "Polygon", "coordinates": [[[-70.3, 18.3], [-70.2, 18.3], [-70.2, 18.4], [-70.3, 18.4], [-70.3, 18.3]]]}
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_update_recomputes_series_after_outline_change(tmp_path, mocked, monkeyp
                                          "n_valid": [n // 2], "n_total": [n], "scene": ["S"]}))
     monkeypatch.setattr(C, "FIRST_DATE", "2024-01-01")
     args = ["--data-dir", str(tmp_path), "--images-dir", str(tmp_path / "img"),
-            "--end", "2024-07-01", "--max-images", "0"]
+            "--end", "2024-07-01", "--max-images", "0", "--skip-extras"]
     update.main(args)
     first = [s for _, s in queried]
     assert first.count("2024-01-01") == 2           # both reservoirs from FIRST_DATE

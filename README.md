@@ -1,7 +1,8 @@
 # Monitor de embalses Sentinel-2 · Sentinel-2 reservoir monitor
 
 **Valdesia y Hatillo, República Dominicana · Dominican Republic.** Índice de clorofila (NDCI) de
-Sentinel-2, actualizado cada día. · *Chlorophyll index (NDCI) from Sentinel-2, updated every day.*
+Sentinel-2 y temperatura del agua de Landsat, actualizados cada dos horas. · *Chlorophyll index (NDCI)
+from Sentinel-2 and water temperature from Landsat, updated every two hours.*
 
 - **Panel / Dashboard:** https://kristofm854.github.io/embalses-s2-monitor/
 - **Datos / Data:** [`data/reservoir_ndci.xlsx`](data/reservoir_ndci.xlsx) ·
@@ -14,23 +15,37 @@ Sentinel-2, actualizado cada día. · *Chlorophyll index (NDCI) from Sentinel-2,
 ## Español
 
 ### Qué hace
-Cada día, GitHub Actions consulta Google Earth Engine para ver si hay imágenes nuevas de
-Sentinel-2 sobre los dos embalses. Para cada imagen calcula un índice de clorofila (NDCI) sobre
-el agua sin nubes, genera dos imágenes (foto en color real y mapa de clorofila) y publica todo en
-el panel. Nadie tiene que hacer nada para que funcione.
+Cada dos horas, GitHub Actions consulta Google Earth Engine para ver si hay imágenes nuevas de
+Sentinel-2 y Landsat sobre los dos embalses. Para cada imagen Sentinel-2 calcula un índice de
+clorofila (NDCI) sobre el agua sin nubes y genera dos imágenes (foto en color real y mapa de
+clorofila); de Landsat calcula la temperatura de la superficie del agua. Una vez al mes genera
+mapas de dónde suele haber más algas, y en cada ejecución calcula los próximos pasos de los
+satélites. Todo se publica en el panel. Si no hay nada nuevo, no se cambia nada. Nadie tiene que
+hacer nada para que funcione. Una imagen nueva suele aparecer en el panel en menos de un día.
 
 ### Uso del panel
 1. **Situación actual:** la última imagen útil (al menos 50 % del embalse sin nubes) de cada
    embalse, con su nivel: Bajo, Medio, Elevado o Muy alto. El nivel compara la imagen con todas
    las imágenes anteriores del mismo embalse.
-2. **¿En qué meses suele haber más algas?:** valor típico por mes. Sirve para decidir cuándo muestrear.
-3. **Historial:** cada punto es una imagen. Filtros: embalse, período, solo niveles altos, solo
+2. **Próximos pasos del satélite:** los días en que Sentinel-2 y Landsat pasarán sobre cada embalse.
+3. **¿En qué meses suele haber más algas?:** valor típico por mes. Sirve para decidir cuándo muestrear.
+4. **¿Dónde suele haber más algas?:** dos mapas de todas las imágenes desde 2019: con qué frecuencia
+   cada punto está verde, y su valor típico. Sirven para elegir puntos de muestreo.
+5. **Historial:** cada punto es una imagen. Filtros: embalse, período, solo niveles altos, solo
    fechas con imagen. Haga clic en un punto para ver las imágenes de ese día; ◀ ▶ (o las flechas
    del teclado) pasan a la fecha anterior o siguiente.
-4. **Lista de fechas:** todas las fechas con nivel y avisos (nubes, sedimento, superficie).
-5. **Descargar datos:** Excel (recomendado), CSV, la selección filtrada y los contornos (GeoJSON).
-6. **¿Cómo funciona?:** explicación sencilla de lo que mide el satélite, qué puede engañarlo,
-   qué no puede decir y cómo usar los datos para planificar el muestreo.
+6. **Temperatura del agua (Landsat):** temperatura de la superficie, una imagen cada 8 días.
+7. **Lista de fechas:** todas las fechas con nivel y avisos (nubes, sedimento, superficie).
+8. **Mis puntos de muestreo:** puntos marcados en las imágenes o mapas, para descargar como GPX
+   (GPS, teléfono) o CSV.
+9. **Descargar datos:** Excel (recomendado), CSV de clorofila y de temperatura, la selección
+   filtrada y los contornos (GeoJSON).
+10. **¿Cómo funciona?:** explicación sencilla de lo que miden los satélites, qué puede engañarlos,
+   qué no pueden decir y cómo usar los datos para planificar el muestreo.
+
+En las imágenes y los mapas: **+ / −** o Ctrl + rueda del ratón (dos dedos en el teléfono) para
+acercar, arrastrar para moverse. Al pasar el ratón se ven las coordenadas (latitud, longitud).
+Con **"Marcar puntos"** activado, un clic guarda el punto.
 
 El enlace en la barra del navegador guarda los filtros y la imagen abierta: se puede copiar y
 enviar a otra persona.
@@ -52,6 +67,21 @@ enviar a otra persona.
 | `n_total` | pixels (20 m) | Número de píxeles de agua dentro del contorno del embalse. |
 | `frac_valid` | fraction (0 to 1) | Fracción del embalse sin nubes (n_valid / n_total). Por debajo de 0,5 (la mitad del embalse cubierta por nubes), use los valores con cautela. |
 | `scene` | - | Identificador de la imagen Sentinel-2 en Google Earth Engine. |
+
+**Temperatura del agua** (`landsat_temperature.csv`, hoja "Temperatura · Temperature" del Excel):
+
+| Columna | Unidad | Significado |
+|---|---|---|
+| `reservoir` | - | Nombre del embalse. |
+| `date` | YYYY-MM-DD | Fecha de la imagen Landsat (UTC). Landsat pasa a las 15:00 UTC aprox. (11:00 hora local). |
+| `temp_p10` | °C | Percentil 10 de la temperatura de la superficie del agua (zonas más frías). |
+| `temp_p50` | °C | Mediana de la temperatura de la superficie del agua. Temperatura de los primeros milímetros del agua ('piel'), exactitud de 1 a 2 °C aprox. El agua cálida favorece las floraciones de algas y cianobacterias. |
+| `temp_p90` | °C | Percentil 90 de la temperatura de la superficie del agua (zonas más cálidas). |
+| `n_valid` | pixels (30 m) | Número de píxeles de agua sin nubes usados. |
+| `n_total` | pixels (30 m) | Número de píxeles de agua en el contorno de temperatura (120 m dentro de la orilla, porque la banda térmica es de 100 m y si no mezclaría tierra caliente). |
+| `frac_valid` | fraction (0 to 1) | Fracción sin nubes del contorno de temperatura. Por debajo de 0,5, use los valores con cautela. |
+| `spacecraft` | - | LANDSAT_8 o LANDSAT_9. |
+| `scene` | - | Identificador del producto Landsat. |
 
 Las mismas descripciones están en la hoja "Metadatos · Metadata" del Excel y en las primeras
 líneas del CSV (las que empiezan con `#`). Para leer el CSV: en R
@@ -96,14 +126,15 @@ limita cuántas imágenes se generan en una ejecución.
 **Estructura del repositorio**
 ```
 pipeline/        Python: consultas a Earth Engine (gee.py), tablas (store.py),
-                 descripción de columnas (metadata.py), ajustes (config.py), inicio (update.py)
+                 descripción de columnas (metadata.py), cuadrícula de las imágenes (grid.py),
+                 ajustes (config.py), inicio (update.py)
 dashboard/       panel estático (HTML/JS/CSS, Plotly incluido, textos ES/EN en i18n.js)
 data/            resultados: CSV, XLSX, JSON para el panel, contornos de los embalses
-images/          <embalse>/<fecha>_rgb.webp y _ndci.webp
+images/          <embalse>/<fecha>_rgb.webp y _ndci.webp; maps/<embalse>_freq.webp y _mean.webp
 analysis/        script de R para explorar el CSV (no necesita Earth Engine)
 tests/           pruebas automáticas
 .github/workflows/
-  update.yml     consulta diaria + guardar + publicar
+  update.yml     consulta cada dos horas + guardar + publicar (solo si hay algo nuevo)
   deploy.yml     publica panel, datos e imágenes en GitHub Pages
   tests.yml      pruebas automáticas
 docs/SETUP.md    configuración inicial: cuenta de servicio, secreto, Pages, primera ejecución
@@ -125,6 +156,15 @@ docs/SETUP.md    configuración inicial: cuenta de servicio, secreto, Pages, pri
   tardías o reprocesadas.
 - **Imágenes:** para fechas con ≥ 30 % de agua despejada, primero las más recientes.
 - **Niveles del panel:** percentiles 50, 75 y 90 de `ndci_p90` de las fechas útiles del mismo embalse.
+- **Cuadrícula de las imágenes:** todas las imágenes de un embalse comparten una cuadrícula UTM 19N
+  exacta (`data/image_grid.json`, de 10 a 15 m por píxel), por eso el panel puede mostrar coordenadas.
+- **Mapas resumen:** de las imágenes Sentinel-2 útiles (≥ 50 % sin nubes) desde 2019: fracción de
+  observaciones despejadas con NDCI > 0,1 por píxel, y NDCI promedio por píxel (escala de los percentiles
+  2 a 98 del embalse), sobre una mediana sin nubes del último año. Se renuevan cada 30 días (`data/maps.json`).
+- **Temperatura:** Landsat 8/9 Colección 2 Nivel 2, banda ST_B10 (K × 0,00341802 + 149,0 − 273,15),
+  píxeles sin nubes, sombra ni cirros según QA_PIXEL, a 30 m, en el contorno reducido otros 100 m.
+- **Próximos pasos:** fechas de adquisición de cada satélite en los últimos 48 días (con o sin nubes),
+  repetidas cada 10 días (Sentinel-2) o 16 días (Landsat) (`data/passes.json`).
 
 **Ejecutar en una computadora**
 ```bash
@@ -147,23 +187,37 @@ cd dashboard && ln -s ../data data && ln -s ../images images && python -m http.s
 ## English
 
 ### What it does
-Every day, GitHub Actions asks Google Earth Engine whether there are new Sentinel-2 images of
-the two reservoirs. For each image it computes a chlorophyll index (NDCI) over the cloud-free
-water, renders two images (true-colour photo and chlorophyll map) and publishes everything on
-the dashboard. Nobody has to do anything to keep it running.
+Every two hours, GitHub Actions asks Google Earth Engine whether there are new Sentinel-2 and
+Landsat images of the two reservoirs. For each Sentinel-2 image it computes a chlorophyll index
+(NDCI) over the cloud-free water and renders two images (true-colour photo and chlorophyll map);
+from Landsat it computes the water surface temperature. Once a month it renders maps of where
+there are usually more algae, and every run predicts the next satellite passes. Everything is
+published on the dashboard. If nothing is new, nothing changes. Nobody has to do anything to keep
+it running. A new image usually appears on the dashboard within a day.
 
 ### Using the dashboard
 1. **Current situation:** the latest usable image (at least 50 % of the reservoir cloud-free) of
    each reservoir, with its level: Low, Medium, Elevated or Very high. The level compares the image
    with all earlier images of the same reservoir.
-2. **In which months are there usually more algae?:** typical value per month. Helps decide when to sample.
-3. **History:** each point is an image. Filters: reservoir, period, only high levels, only dates
+2. **Upcoming satellite passes:** the days when Sentinel-2 and Landsat will pass over each reservoir.
+3. **In which months are there usually more algae?:** typical value per month. Helps decide when to sample.
+4. **Where are there usually more algae?:** two maps from all images since 2019: how often each
+   point is green, and its typical value. Help choose sampling points.
+5. **History:** each point is an image. Filters: reservoir, period, only high levels, only dates
    with an image. Click a point to see the images of that day; ◀ ▶ (or the arrow keys) go to the
    previous or next date.
-4. **List of dates:** all dates with level and warnings (clouds, sediment, surface).
-5. **Download data:** Excel (recommended), CSV, the filtered selection and the outlines (GeoJSON).
-6. **How does it work?:** a simple explanation of what the satellite measures, what can mislead it,
-   what it cannot tell and how to use the data to plan sampling.
+6. **Water temperature (Landsat):** surface temperature, one image every 8 days.
+7. **List of dates:** all dates with level and warnings (clouds, sediment, surface).
+8. **My sampling points:** points marked on the images or maps, to download as GPX (GPS, phone)
+   or CSV.
+9. **Download data:** Excel (recommended), chlorophyll and temperature CSV, the filtered selection
+   and the outlines (GeoJSON).
+10. **How does it work?:** a simple explanation of what the satellites measure, what can mislead
+   them, what they cannot tell and how to use the data to plan sampling.
+
+On the images and maps: **+ / −** or Ctrl + mouse wheel (two fingers on a phone) to zoom, drag to
+move. Moving the mouse shows the coordinates (latitude, longitude). With **"Mark points"** switched
+on, a click saves the point.
 
 The link in the browser bar keeps the filters and the open image: it can be copied and sent to
 someone else.
@@ -185,6 +239,21 @@ someone else.
 | `n_total` | pixels (20 m) | Number of water pixels in the reservoir outline. |
 | `frac_valid` | fraction (0 to 1) | Cloud-free share of the reservoir (n_valid / n_total). Below 0.5 (half the reservoir hidden by clouds), treat the values with caution. |
 | `scene` | - | Identifier of the Sentinel-2 image in Google Earth Engine. |
+
+**Water temperature** (`landsat_temperature.csv`, sheet "Temperatura · Temperature" of the Excel file):
+
+| Column | Unit | Meaning |
+|---|---|---|
+| `reservoir` | - | Reservoir name. |
+| `date` | YYYY-MM-DD | Date of the Landsat image (UTC). Landsat passes at about 15:00 UTC (11:00 local time). |
+| `temp_p10` | °C | 10th percentile of the water surface temperature (cooler parts). |
+| `temp_p50` | °C | Median water surface temperature. Temperature of the top millimetres of the water ('skin'), accuracy about 1 to 2 °C. Warm water favours algal and cyanobacterial blooms. |
+| `temp_p90` | °C | 90th percentile of the water surface temperature (warmer parts). |
+| `n_valid` | pixels (30 m) | Number of cloud-free water pixels used. |
+| `n_total` | pixels (30 m) | Number of water pixels in the temperature outline (120 m inside the shore, because the thermal band is 100 m and would otherwise mix in warm land). |
+| `frac_valid` | fraction (0 to 1) | Cloud-free share of the temperature outline. Below 0.5, treat the values with caution. |
+| `spacecraft` | - | LANDSAT_8 or LANDSAT_9. |
+| `scene` | - | Landsat product identifier. |
 
 The same descriptions are in the "Metadatos · Metadata" sheet of the Excel file and in the first
 lines of the CSV (those starting with `#`). To read the CSV: in R
@@ -228,14 +297,15 @@ images are rendered in one run.
 **Repository layout**
 ```
 pipeline/        Python: Earth Engine queries (gee.py), tables (store.py),
-                 column descriptions (metadata.py), settings (config.py), entry point (update.py)
+                 column descriptions (metadata.py), image grid (grid.py),
+                 settings (config.py), entry point (update.py)
 dashboard/       static dashboard (HTML/JS/CSS, Plotly bundled, ES/EN text in i18n.js)
 data/            outputs: CSV, XLSX, JSON for the dashboard, reservoir outlines
-images/          <reservoir>/<date>_rgb.webp and _ndci.webp
+images/          <reservoir>/<date>_rgb.webp and _ndci.webp; maps/<reservoir>_freq.webp and _mean.webp
 analysis/        R script for exploring the CSV (no Earth Engine needed)
 tests/           automated tests
 .github/workflows/
-  update.yml     daily query + commit + publish
+  update.yml     query every two hours + commit + publish (only when something is new)
   deploy.yml     publishes dashboard, data and images to GitHub Pages
   tests.yml      automated tests
 docs/SETUP.md    one-time setup: service account, secret, Pages, first run
@@ -257,6 +327,15 @@ docs/SETUP.md    one-time setup: service account, secret, Pages, first run
 - **Images:** for dates with ≥ 30 % clear water, newest first.
 - **Dashboard levels:** 50th, 75th and 90th percentiles of `ndci_p90` over the usable dates of the
   same reservoir.
+- **Image grid:** all images of a reservoir share one exact UTM 19N grid (`data/image_grid.json`,
+  10 to 15 m per pixel), so the dashboard can show coordinates.
+- **Summary maps:** from the usable Sentinel-2 images (≥ 50 % cloud-free) since 2019: per pixel, the
+  share of clear observations with NDCI > 0.1, and the mean NDCI (scaled to the reservoir's 2nd to
+  98th percentile), over a cloud-free median of the last year. Renewed every 30 days (`data/maps.json`).
+- **Temperature:** Landsat 8/9 Collection 2 Level 2, band ST_B10 (K × 0.00341802 + 149.0 − 273.15),
+  pixels free of cloud, shadow and cirrus per QA_PIXEL, at 30 m, in the outline shrunk a further 100 m.
+- **Upcoming passes:** acquisition dates of each spacecraft in the last 48 days (cloudy or not),
+  repeated every 10 days (Sentinel-2) or 16 days (Landsat) (`data/passes.json`).
 
 **Run on a computer**
 ```bash

@@ -109,11 +109,61 @@ GENERAL = [
      "Los datos de satélite no distinguen cianobacterias de otras algas ni miden toxinas. "
      "Solo ven la capa superior del agua."),
     ("Updates", "Actualización",
-     "Updated automatically every day. Sentinel-2 images every 2-5 days; "
-     "a new image appears here 1-3 days after it was taken.",
-     "Se actualiza automáticamente cada día. Imágenes Sentinel-2 cada 2-5 días; "
-     "una imagen nueva aparece aquí 1-3 días después de tomarla."),
+     "Checked for new images every two hours. Sentinel-2 images every 2-5 days; "
+     "a new image usually appears here within a day after it was taken.",
+     "Se buscan imágenes nuevas cada dos horas. Imágenes Sentinel-2 cada 2-5 días; "
+     "una imagen nueva suele aparecer aquí en menos de un día después de tomarla."),
     ("More", "Más",
      f"Dashboard: {DASHBOARD_URL}  Code and documentation: {REPO_URL}",
      f"Panel: {DASHBOARD_URL}  Código y documentación: {REPO_URL}"),
+]
+
+
+# Landsat 8/9 water surface temperature table (data/landsat_temperature.csv)
+TEMP_COLUMNS = [
+    ("reservoir", "-", "Reservoir name.", "Nombre del embalse.", "", ""),
+    ("date", "YYYY-MM-DD",
+     "Date of the Landsat image (UTC). Landsat passes at about 15:00 UTC (11:00 local time).",
+     "Fecha de la imagen Landsat (UTC). Landsat pasa a las 15:00 UTC aprox. (11:00 hora local).",
+     "", ""),
+    ("temp_p10", "°C", "10th percentile of the water surface temperature (cooler parts).",
+     "Percentil 10 de la temperatura de la superficie del agua (zonas más frías).", "", ""),
+    ("temp_p50", "°C", "Median water surface temperature.",
+     "Mediana de la temperatura de la superficie del agua.",
+     "Temperature of the top millimetres of the water ('skin'), accuracy about 1 to 2 °C. "
+     "Warm water favours algal and cyanobacterial blooms.",
+     "Temperatura de los primeros milímetros del agua ('piel'), exactitud de 1 a 2 °C aprox. "
+     "El agua cálida favorece las floraciones de algas y cianobacterias."),
+    ("temp_p90", "°C", "90th percentile of the water surface temperature (warmer parts).",
+     "Percentil 90 de la temperatura de la superficie del agua (zonas más cálidas).", "", ""),
+    ("n_valid", "pixels (30 m)", "Number of cloud-free water pixels used.",
+     "Número de píxeles de agua sin nubes usados.", "", ""),
+    ("n_total", "pixels (30 m)",
+     "Number of water pixels in the temperature outline (120 m inside the shore, because the "
+     "thermal band is 100 m and would otherwise mix in warm land).",
+     "Número de píxeles de agua en el contorno de temperatura (120 m dentro de la orilla, porque la "
+     "banda térmica es de 100 m y si no mezclaría tierra caliente).", "", ""),
+    ("frac_valid", "fraction (0 to 1)", "Cloud-free share of the temperature outline.",
+     "Fracción sin nubes del contorno de temperatura.",
+     "Below 0.5, treat the values with caution.", "Por debajo de 0,5, use los valores con cautela."),
+    ("spacecraft", "-", "LANDSAT_8 or LANDSAT_9.", "LANDSAT_8 o LANDSAT_9.", "", ""),
+    ("scene", "-", "Landsat product identifier.", "Identificador del producto Landsat.", "", ""),
+]
+
+TEMP_GENERAL = [
+    ("Dataset", "Datos",
+     "Water surface temperature from Landsat 8/9 for the Valdesia and Hatillo reservoirs. "
+     "One row per reservoir and Landsat image.",
+     "Temperatura de la superficie del agua de Landsat 8/9 para los embalses Valdesia y Hatillo. "
+     "Una fila por embalse e imagen Landsat."),
+    ("Source", "Fuente",
+     "USGS Landsat Collection 2 Level-2 surface temperature (ST_B10), LANDSAT/LC08 and LC09 "
+     "C02/T1_L2, cloud mask from QA_PIXEL, processed in Google Earth Engine.",
+     "Temperatura de superficie Landsat Colección 2 Nivel 2 del USGS (ST_B10), LANDSAT/LC08 y LC09 "
+     "C02/T1_L2, máscara de nubes de QA_PIXEL, procesado en Google Earth Engine."),
+    ("Important", "Importante",
+     "Skin temperature of the surface, not the temperature at depth. Images every 8 days "
+     "(two satellites); new images can take days to weeks to appear.",
+     "Temperatura de la piel de la superficie, no la temperatura en profundidad. Imágenes cada 8 días "
+     "(dos satélites); las imágenes nuevas pueden tardar días o semanas en aparecer."),
 ]

@@ -50,3 +50,25 @@ IMG_DIM = 800         # px, longest side
 IMG_QUALITY = 80      # WebP quality
 NDCI_VIS = (-0.1, 0.4)
 NDCI_PALETTE = ["0000ff", "00ffff", "00ff00", "ffff00", "ff0000"]
+
+# Summary maps "where are there usually more algae" (all usable dates since MAPS start)
+MAPS = {
+    "start": "2019-01-01",
+    "green_ndci": 0.1,       # "clearly green" pixel, as in frac_ndci_gt_0.1
+    "freq_max": 0.5,         # colour scale of the frequency map: 0 to 50 % of dates
+    "min_obs": 20,           # clear looks needed per pixel
+    "palette": ["ffffcc", "fed976", "fd8d3c", "e31a1c", "800026"],  # light = low, dark = high
+    "refresh_days": 30,      # re-render monthly
+}
+
+# Landsat 8/9 surface temperature (thermal band, 100 m, delivered at 30 m)
+LANDSAT = {
+    "first_date": "2013-04-01",
+    "extra_buffer_m": 100,   # further from the shore than the Sentinel-2 outline
+    "lookback_days": 60,     # Landsat Level-2 products can arrive days to weeks late
+    "chunk_months": 12,
+}
+
+# Satellite pass prediction
+PASS_REPEAT_DAYS = {"s2": 10, "landsat": 16}   # repeat cycle of each spacecraft
+PASS_HORIZON_DAYS = 45
