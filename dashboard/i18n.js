@@ -75,7 +75,9 @@ const I18N = {
 
     h_how: "10. ¿Cómo funciona? Explicación sencilla",
     footer: `Datos: Copernicus Sentinel-2 (ESA), procesados con Google Earth Engine. Código y documentación:
-      <a href="https://github.com/KristofM854/embalses-s2-monitor">github.com/KristofM854/embalses-s2-monitor</a>.`,
+      <a href="https://github.com/KristofM854/embalses-s2-monitor">github.com/KristofM854/embalses-s2-monitor</a>.
+      Esta página cuenta las visitas de forma anónima con <a href="https://www.goatcounter.com/">GoatCounter</a>
+      (sin cookies ni datos personales).`,
 
     h_passes: "2. Próximos pasos del satélite",
     passes_help: "Días en que el satélite pasa sobre el embalse, calculados a partir de sus órbitas (se repiten cada 10 días para Sentinel-2 y cada 16 días para Landsat). Con nubes no habrá datos. Útil para muestrear el mismo día que el satélite.",
@@ -271,7 +273,9 @@ const I18N = {
 
     h_how: "10. How does it work? A simple explanation",
     footer: `Data: Copernicus Sentinel-2 (ESA), processed with Google Earth Engine. Code and documentation:
-      <a href="https://github.com/KristofM854/embalses-s2-monitor">github.com/KristofM854/embalses-s2-monitor</a>.`,
+      <a href="https://github.com/KristofM854/embalses-s2-monitor">github.com/KristofM854/embalses-s2-monitor</a>.
+      This page counts visits anonymously with <a href="https://www.goatcounter.com/">GoatCounter</a>
+      (no cookies, no personal data).`,
 
     h_passes: "2. Upcoming satellite passes",
     passes_help: "Days when the satellite passes over the reservoir, computed from its orbits (they repeat every 10 days for Sentinel-2 and every 16 days for Landsat). Clouds mean no data. Useful for sampling on the same day as the satellite.",
